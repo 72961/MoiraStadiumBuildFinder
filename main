@@ -1,0 +1,1192 @@
+import itertools
+import math
+import time
+import matplotlib.pyplot as plt
+
+from IPython.display import display, HTML
+display(HTML("<style>.container { width: 90% !important; }</style>"))
+
+# Last updated June 27 2025
+
+# Change settings, then find your budget. (e.g., if 10123 cash, look for "Items (6 @ cost 10000)" or cheaper). 
+# Any "Alternatives" are builds that exactly tie this objective score and price, but the "main" build it suggests has a higher right click dps + coal dps
+
+# Check the cheaper budgets too to see if they have the same objective score, as they could be a viable alternative. E.g., "orb" will show a build with Extendrils at max cash simply because it costs more than other 15% AP items.
+# If a score is tied at different budgets, there will be no divider, easier to see (-----------)
+
+
+# Objectives: dps (right click damage), hps (right click self heal), coal (coalesence damage), combined (dps+hps), orb (damage orb damage), life (max life)
+# max items: up to 6. Just leave it at 6, change mandatory_items to e.g. ['Liquid nitrogen'] and leave it at 6 if you want mandatory items.
+# max cost: leave it at 100000. The code is fast enough now that it prints the whole list in a few seconds. You can set it to your exact budget if you don't want to scroll around/slightly faster.
+# ethereal_excision_HS: Should hps and combined use EE's +30% weapon lifesteal?
+# deconstruction: Should dps, combined, coal, and orb use Deconstruction's damage boost?
+# destruction's divide: Should coal use Destruction's divide's damage boost?
+
+# Shields / Armour: Gives Shieldbreaker it's bonus speed. Armour applies *0.7 damage modifier if Codebreaker doesn't end up as a selected item, *0.85 if it does.
+
+# A bunch of items: Should these items have their conditional stats?
+# (Note: Weapon jammer, vanadium, and aerial distresser are NEVER applied to coal, as you can't/can't realistically use them with coal. Superflexor can somewhat be used with coal (3s linger + 5s of AP boost) so I did let it have 25% AP for coal if True.)
+
+# In the item list, I removed apostrophes from the names (e.g., Amaris antidote) because it would mess up the structure of the mandatory/excluded item list.
+
+
+# ------------------------------ Just change these things then hit Run in the top left ------------------------------ 
+
+
+# Settings
+objective = "coal"
+max_items = 6
+max_cost  = 100000
+ethereal_excision_HS = True
+deconstruction = False
+destructions_divide = False
+
+against_shields = False
+against_armour = False
+
+advanced_nanobiotics = True
+superflexor = True
+weapon_jammer = True
+amaris_antidote = False
+vanadium_injection = False
+volskaya_ordnance = 0
+
+emergency_chip = False
+vitality_amplifier = False
+
+aerial_distresser = False
+
+mandatory_items = []
+excluded_items = []
+
+# Examples^:
+# mandatory_items = ['Amaris antidote']
+# mandatory_items = ['El-saka Supressor', 'Ogundimu Reduction Field']
+# >>Dont<< use apostrophes in the names!
+# 'cybervenom','liquid nitrogen','alternative energy','biotech maximizer'
+
+remove_awful_items = True
+
+# ^ Remove awful items makes the code MUCH FASTER by excluding items that the code would never end up realistically suggesting, but should still be possible to include as a mandatory item.
+# e.g. El-Saka Supressor (10% WP, crits apply Healing Reduction) because it's just 10% WP for 11000.
+# Also conditionally excludes items, e.g., if both against_shields and against_armour = False, Shieldbuster is excluded because it's just 5% WP for 4000.
+
+# You can override this list by making your desired item(s) mandatory.
+
+
+
+# ------------------------------ Don't need to change anything below here ------------------------------
+
+
+# Settings
+settings = {
+    "Objective": f"maximize {objective}",
+    "Max items": max_items,
+    "Max cost": max_cost,
+    "Ethereal excision HS": ethereal_excision_HS,
+    "Deconstruction": deconstruction,
+    "Destruction's divide": destructions_divide,
+    "Against shields": against_shields,
+    "Against armour": against_armour,
+    "Advanced nanobiotics": advanced_nanobiotics,
+    "Superflexor": superflexor,
+    "Weapon jammer": weapon_jammer,
+    "Amari's antidote": amaris_antidote,
+    "Vanadium injection": vanadium_injection,
+    "Volskaya ordnance boost": volskaya_ordnance,
+    "Emergency chip": emergency_chip,
+    "Vitality amplifier": vitality_amplifier,
+    "Aerial Distresser": aerial_distresser
+}
+
+
+if remove_awful_items:
+    # New: conditionally exclude “awful” items (sometimes based on their flag)
+    excluded_items += ['Advanced Nanobiotics'] if not advanced_nanobiotics else [] # 5% WP for 4000... no
+    excluded_items += ['Superflexor']          if not superflexor          else [] # 10% WP for 10000... no
+    excluded_items += ['Weapon jammer']        if not weapon_jammer        else [] # 10% WP for 10000... no
+    excluded_items += ['Volskaya Ordnance']    if (volskaya_ordnance == 0)    else [] # 10% AS for 9500... no
+    excluded_items += ['Shieldbuster']         if not (against_shields or against_armour)   else [] # 5% WP for 4000... no
+    excluded_items += ['El-saka Supressor'] # 10% WP for 11000?... no
+    excluded_items += ['Biolight Overflow']    if not (objective == "life") else [] # 4000 for 5% AP and 25 health. If your goal is life then 5% AP is a great bonus. If your goal is AP then 25 health is an awful bonus. Excluded when the objective isn't life.
+    excluded_items += ['Liquid Nitrogen']
+    excluded_items += ['Mark of the Kitsune']
+    excluded_items += ['Winning Attitude'] # Fifth 25 life item for 1500. Relevant for max life builds < 17500 but makes life calculations VERY slow.
+    excluded_items += ['Geneticists Vial'] # 25 health for 9000 is irrelevant
+    excluded_items += ['Emergency Chip']       if not emergency_chip       else [] # 5% WP for 4500... no
+    excluded_items += ['Vitality Amplifier']   if not vitality_amplifier   else [] # 25 Shields for 4500... no
+    excluded_items += ['Sonic Recharger']
+    excluded_items += ['Overdrive Core']
+    excluded_items += ['Aerial Distresser']    if not aerial_distresser    else []
+
+# This should be Moira's base game hp.
+initial_hp = 225
+
+if initial_hp > 351:
+    print("Note, tanks have different scaling for their bonus health based on Stadium cash. If you're reading this I haven't gotten around to implementing it yet. It should be 1 health per 750 but it's bugged as of Season 17; tanks get 1 health per 250.")
+
+if aerial_distresser and (objective == "dps" or objective == "combined"):
+    print("I'm pretty sure Aerial Distresser is a 1.25x multiplier on whatever right click damage you're doing. It works that way for most heroes, hard to calculate on Moira. I coded it in this way, hope I'm right.")
+
+
+from IPython.display import display, HTML
+display(HTML("<style>.container { width: 90% !important; }</style>"))
+
+
+
+
+
+
+# Mandatory and excluded items (shown only if non-empty)
+if mandatory_items:
+    settings["Mandatory items"] = mandatory_items
+if excluded_items:
+    settings["Excluded items"] = excluded_items
+
+# Construct and print settings dynamically
+print("\n".join([f"{key}: {value}" for key, value in settings.items() if value]))
+
+
+
+
+records = [
+{'Category': 'Weapon',
+  'Cost': 1500,
+  'Description': 'Eliminations grant 10% Attack Speed and Move Speed for 3s',
+  'Name': 'Frenzy amplifier',},
+ {'Category': 'Weapon',
+  'Cost': 1000,
+  'Description': '5% Weapon Power',
+  'Name': 'Compensator',
+  'WP': 5},
+ {'Category': 'Weapon',
+  'Cost': 1000,
+  'Description': '10% Weapon Lifesteal',
+  'Name': 'Plasma Converter',
+  'Weapon lifesteal': 10},
+ {'Attack speed': 5,
+  'Category': 'Weapon',
+  'Cost': 1000,
+  'Description': '5% Attack Speed',
+  'Name': 'Weapon Grease'},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 3750,
+  'Description': '10% Attack Speed, 5% Move Speed',
+  'Move speed': 5,
+  'Name': 'Aftermarket Firing Pin'},
+ {'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': '5% Weapon Power, After healing an ally, gain 10% Attack '
+                 'Speed for 3s.',
+  'Name': 'Advanced Nanobiotics',
+  'WP': 5},
+ {'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': '5% Weapon Power, After dealing damage to Shields or Armor, '
+                 'gain 15% Attack Speed for 1s.',
+  'Name': 'Shieldbuster',
+  'WP': 5},
+ {'Category': 'Weapon',
+  'Cost': 4500,
+  'Description': 'While you are below 150 Life, gain 15% Weapon Lifesteal. ',
+  'Name': 'Emergency Chip',
+  'Shields': 25,
+  'WP': 5},
+ {'Category': 'Weapon',
+  'Cost': 4500,
+  'Description': '5% Weapon Power, 10% Weapon Lifesteal',
+  'Name': 'Technoleech',
+  'WP': 5,
+  'Weapon lifesteal': 10},
+ {'Category': 'Weapon',
+  'Cooldown reduction': 5,
+  'Cost': 5500,
+  'Description': '10% Weapon Power, 5% Cooldown Reduction',
+  'Name': 'Icy Coolant',
+  'WP': 10},
+ {'Category': 'Weapon',
+  'Cost': 6000,
+  'Description': '15% Weapon Power',
+  'Name': 'Talon Modification Module',
+  'WP': 15},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': "10% Attack Speed. Biotic Grasp's secondary fire restores 50% "
+                 'more Biotic Energy.',
+  'Name': 'Bio-Needles'},
+ {'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': '10% Weapon Power. +50% Max Biotic Energy.',
+  'Name': 'High Capacity Tubing',
+  'WP': 10},
+ {'Category': 'Weapon',
+  'Cost': 9000,
+  'Description': '15% Weapon Power, Ignore 50% of Armorâ€™s damage reduction.',
+  'Name': 'Codebreaker',
+  'WP': 15},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 9500,
+  'Description': '10% Attack Speed, Deal 5% increased Weapon damage for every '
+                 '100 Max Life they have more than you, up to 20%.',
+  'Name': 'Volskaya Ordnance'},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 10000,
+  'Description': 'Weapon damage to airborne enemies deal 25% bonus damage over 3s.',
+  'Name': 'Aerial Distresser',
+  'Shields': 25},
+ {'Armour': 25,
+  'Category': 'Weapon',
+  'Cost': 10000,
+  'Description': '25 Armour, 10% Weapon Power, Dealing Weapon Damage negates '
+                 "10% of the target's bonus Attack Speed and increases your "
+                 'Attack Speed by 10% for 2s.',
+  'Name': 'Weapon Jammer',
+  'WP': 10},
+ {'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': '25 Health, 15% Weapon Power, While healing an ally below 50% '
+                 'Life with your Weapon, deal 15% increased Weapon Healing.',
+  'Health': 25,
+  'Name': 'Amaris Antidote',
+  'WP': 15},
+ {'Attack speed': 20,
+  'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': '20% Attack Speed, When you use an ability, gain 10% Move '
+                 'Speed for 2s.',
+  'Name': 'Booster Jets'},
+ {'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': '10% Weapon Power, Critical Hits apply 30% Healing Reduction '
+                 'to the target for 2s.',
+  'Name': 'El-saka Supressor',
+  'WP': 10},
+ {'Category': 'Weapon',
+  'Cooldown reduction': 10,
+  'Cost': 11000,
+  'Description': '10% Weapon Power, 10% Cooldown Reduction, When you use an '
+                 'ability, gain 5% Weapon Power for 3s, stacking up to 3 '
+                 'times.',
+  'Name': 'Hardlight Accelerator',
+  'WP': 10},
+ {'Category': 'Weapon',
+  'Cost': 14000,
+  'Description': '25% Weapon Power, Deal 10% increased damage to enemies below '
+                 '30% Life.',
+  'Name': 'Eye of the Spider',
+  'WP': 25},
+ {'Category': 'Weapon',
+  'Cost': 14500,
+  'Description': '20% Weapon Power, 10% Critical Damage, Critical Hits reveal '
+                 'the target for 3s.',
+  'Name': 'The Closer',
+  'WP': 20},
+ {'AP': 10,
+  'Attack speed': 15,
+  'Category': 'Weapon',
+  'Cost': 10000,
+  'Description': '10% Ability Power. 15% Attack Speed. When you use Fade, '
+                 'refill your Biotic Energy.',
+  'Name': 'Alternative Energy'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 1000,
+  'Description': '10% Ability Power',
+  'Name': 'Power Playbook'},
+ {'Ability lifesteal': 10,
+  'Category': 'Ability',
+  'Cost': 1000,
+  'Description': '10% Ability Lifesteal',
+  'Name': 'Shady Spectacles'},
+ {'Category': 'Ability',
+  'Cost': 1500,
+  'Description': '25 Health, When you die, gain 15% Ultimate Charge.',
+  'Health': 25,
+  'Name': 'Winning Attitude'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 3750,
+  'Description': '5% Weapon Power, 10% Ability Power',
+  'Name': 'Custom Stock',
+  'WP': 5},
+ {'AP': 5,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': '25 Health. 5% Ability Power, When you spend your Ultimate '
+                 'Charge, grant nearby allies 75 Overhealth for 3s.',
+  'Health': 25,
+  'Name': 'Biolight Overflow'},
+ {'AP': 10,
+  'Ability lifesteal': 10,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': '10% Ability Power, 10% Ability Lifesteal',
+  'Name': 'Energized Bracers'},
+ {'AP': 5,
+  'Attack speed': 10,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': '5% Ability Power, 10% Attack Speed',
+  'Name': 'Wrist Wraps'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cooldown reduction': 5,
+  'Cost': 4500,
+  'Description': '10% Ability Power, 5% Cooldown Reduction',
+  'Name': 'Multi-Tool'},
+ {'Ability lifesteal': 10,
+  'Category': 'Ability',
+  'Cost': 4500,
+  'Description': 'While you are above 80% Life, gain 10% Ability Power.',
+  'Name': 'Vitality Amplifier',
+  'Shields': 25},
+ {'AP': 20,
+  'Category': 'Ability',
+  'Cost': 6000,
+  'Description': '20% Ability Power',
+  'Name': 'Nano Cola'},
+ {'AP': 5,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': '5% Ability Power. Biotic Orb moves 50% slower while it is '
+                 'healing or dealing damage.',
+  'Name': 'Smart Orbs'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 4500,
+  'Description': '10% Ability Power. During Coalescence, gain free flight.',
+  'Name': 'Levitation Shawl'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 9500,
+  'Description': 'Passive Life Regeneration can overheal up to 75.',
+  'Name': 'Sonic Recharger',
+  'Shields': 25},
+ {'AP': 10,
+  'Attack speed': 10,
+  'Category': 'Ability',
+  'Cost': 9500,
+  'Description': '10% Ability Power, 10% Attack Speed, After using an ability, '
+                 'your next 3 instances of Weapon Damage deal additional '
+                 'damage equal to 3% of the targetâ€™s Life.',
+  'Name': 'Three-tap Tommygun'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 10000,
+  'Description': '25 Health, 10% Ability Power, When you use an ability that '
+                 'heals, reduce its cooldown by 5% for each unique ally it '
+                 'heals.',
+  'Health': 25,
+  'Name': 'Biotech Maximizer'},
+ {'AP': 15,
+  'Category': 'Ability',
+  'Cost': 10000,
+  'Description': '15% Ability Power, Ability damage and healing grants 20% '
+                 'more ultimate charge.',
+  'Name': 'Catalytic Crystal'},
+ {'AP': 15,
+  'Armour': 50,
+  'Category': 'Ability',
+  'Cost': 10000,
+  'Description': '50 Armor, 15% Ability Power, When you use an ability, '
+                 'restore 50 armor or shields over 2s.',
+  'Name': 'Lumerico Fusion Drive'},
+ {'Category': 'Ability',
+  'Cost': 10000,
+  'Description': '25 Health, 10% Weapon Power, When you deal Weapon Damage or '
+                 'Healing, gain 5% Ability Power for 3s, stacking up to 5 '
+                 'times.',
+  'Health': 25,
+  'Name': 'Superflexor',
+  'WP': 10},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cooldown reduction': 5,
+  'Cost': 10500,
+  'Description': '10% Ability Power, 5% Cooldown Reduction, Dealing ability '
+                 'damage applies 30% healing reduction for 2s.',
+  'Name': 'Cybervenom'},
+ {'AP': 20,
+  'Category': 'Ability',
+  'Cooldown reduction': 10,
+  'Cost': 11000,
+  'Description': '20% Ability Power, 10% Cooldown Reduction, After Spending '
+                 'your Ultimate Charge, gain 100 Overhealth for 3s.',
+  'Name': 'Iridescent Iris'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 11000,
+  'Description': '25 Health, 10% Ability Power, Dealing ability damage slows '
+                 'the targetâ€™s move speed by 20% for 3s.',
+  'Health': 25,
+  'Name': 'Liquid Nitrogen'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 11000,
+  'Description': '10% Ability Power, When you use an ability, your next '
+                 'instance of weapon damage or healing deals 25 bonus damage '
+                 'or healing.',
+  'Name': 'Mark of the Kitsune'},
+ {'AP': 35,
+  'Category': 'Ability',
+  'Cost': 14000,
+  'Description': '35% Ability Power',
+  'Name': 'Champions Kit'},
+ {'AP': 15,
+  'Category': 'Ability',
+  'Cost': 10000,
+  'Description': '15% Ability Power. Allies healed by Coalescence deal 15% '
+                 'increased damage.',
+  'Name': 'Coalegion'},
+ {'AP': 15,
+  'Category': 'Ability',
+  'Cost': 11000,
+  'Description': '15% Ability Power. 30% Biotic Orb Tendril Range.',
+  'Name': 'Extendrils'},
+ {'Category': 'Survival',
+  'Cost': 1000,
+  'Description': '10 Health. At the start of the round and when you first '
+                 'respawn, gain 20% move speed for 10s while out of combat.',
+  'Health': 10,
+  'Name': 'Running Shoes'},
+ {'Category': 'Survival',
+  'Cost': 1500,
+  'Description': '25 Health. Health Packs grant 20% Move Speed for 5s and 50 '
+                 'Overhealth.',
+  'Health': 25,
+  'Name': 'Adrenaline Shot'},
+ {'Armour': 25,
+  'Category': 'Survival',
+  'Cost': 1500,
+  'Description': '25 Armor.',
+  'Name': 'Armored Vest'},
+ {'Category': 'Survival',
+  'Cost': 1500,
+  'Description': '25 Shields. Reduce the time before your life begins '
+                 'regenerating by 33%.',
+  'Name': 'First Aid Kit',
+  'Shields': 25},
+ {'Category': 'Survival',
+  'Cost': 1500,
+  'Description': '5% Move speed. Enemies below 30% life are revealed to you.',
+  'Move speed': 5,
+  'Name': 'Heartbeat sensor'},
+ {'Category': 'Survival',
+  'Cost': 1500,
+  'Description': '25 Health. Quick melee damage heals for 25 Health.',
+  'Health': 25,
+  'Name': 'Siphon Gloves'},
+ {'Category': 'Survival',
+  'Cost': 3750,
+  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
+                 'Damage.',
+  'Name': 'Reinforced Titanium',
+  'Shields': 25},
+ {'Category': 'Survival',
+  'Cost': 3750,
+  'Description': '25 Shields. -40% Incoming Negative Effect Duration. When '
+                 'affected by Stun, Sleep, or hinder, restore 10% of your max '
+                 'Life over 3s.',
+  'Name': 'Cushioned Padding',
+  'Shields': 25},
+ {'Category': 'Survival',
+  'Cooldown reduction': 5,
+  'Cost': 4000,
+  'Description': '5% Cooldown Reduction. When you use an ability, gain 25 '
+                 'Overhealth over 3s.',
+  'Name': 'Ironclad Exhaust Ports'},
+ {'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '25 Shields. Convert 100 Health into Shields.',
+  'Name': 'Vishkar Condensor',
+  'Shields': 25},
+ {'Armour': 10,
+  'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '10 Armor. Convert 100 Health into Armor.',
+  'Name': 'Vital-e-tee'},
+ {'Armour': 25,
+  'Category': 'Survival',
+  'Cost': 4500,
+  'Description': '25 Armor. While you have Armor, take 10% reduced weapon '
+                 'damage.',
+  'Name': 'Crusader Hydraulics'},
+ {'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
+  'Name': 'Iron Eyes',
+  'Shields': 25},
+ {'Category': 'Survival',
+  'Cost': 5000,
+  'Description': '8% Health, Armor, Shields.',
+  'Name': 'Meka Z-Series'},
+ {'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '25 Health. While using Fade, you jump 30% higher.',
+  'Health': 25,
+  'Name': 'Abyss Boots'},
+ {'Category': 'Survival',
+  'Cost': 9000,
+  'Description': '50 Health. The last enemy to deal a final blow to you is '
+                 'Revealed when nearby. Deal 10% more damage to them and take '
+                 '10% reduced damage from them.',
+  'Health': 50,
+  'Name': 'Bloodbound'},
+ {'Category': 'Survival',
+  'Cost': 9000,
+  'Description': '25 Health. The first time you would die each round, revive '
+                 'instead with 250 Life after 3s.',
+  'Health': 25,
+  'Name': 'Geneticists Vial'},
+ {'Category': 'Survival',
+  'Cost': 9500,
+  'Description': '50 Shields. When you take more than 100 damage at once, '
+                 'restore 20% of damage taken and start regenerating your '
+                 'Shields.',
+  'Name': 'Divine Intervention',
+  'Shields': 50},
+ {'Armour': 50,
+  'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '50 Armor. 15% Melee Damage. [Melee] Damage grants 10% Move '
+                 'Speed and restores 5% of Max Life over 2s.',
+  'Name': 'Gloomgauntlet'},
+ {'Category': 'Survival',
+  'Cooldown reduction': 10,
+  'Cost': 10000,
+  'Description': '25 Health. 10% Cooldown Reduction. Restore 3% of your Life '
+                 'every 1s.',
+  'Health': 25,
+  'Name': 'Martian Mender'},
+ {'Category': 'Survival',
+  'Cost': 10000,
+  'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, you first gain 300 decaying Overhealth.',
+  'Name': 'Overdrive Core',
+  'Shields': 25,
+  'WP': 10},
+ {'AP': 10,
+  'Ability lifesteal': 15,
+  'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '10% Weapon Power. 10% Ability Power. 15% Weapon Lifesteal. '
+                 '15% Ability Lifesteal. While at full Life, Lifesteal grants '
+                 'up to 100 Overhealth.',
+  'Name': 'Phantasmic Flux',
+  'WP': 10,
+  'Weapon lifesteal': 15},
+ {'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '15% Health, Armor, Shields. While below 30% Life, gain 10% '
+                 'Damage Reduction.',
+  'Name': 'Rustung Von Wilhelm'},
+ {'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '50 Shields. While at 100% Ultimate Charge, gain: 50 Health, '
+                 '10% Weapon Power, 10% Ability Power, 10% Attack Speed, 10% '
+                 'Cooldown Reduction, 10% Move Speed.',
+  'Name': 'Vanadium Injection',
+  'Shields': 50},
+ {'Category': 'Survival',
+  'Cost': 11000,
+  'Description': '50 Health. 10% Weapon Power. Prevent 15% of incoming damage '
+                 'and instead take that prevented damage over 3s.',
+  'Health': 50,
+  'Name': 'Nebula Conduit',
+  'WP': 10},
+ {'Armour': 50,
+  'Category': 'Survival',
+  'Cost': 11000,
+  'Description': '50 Armor. When you take damage, gain 0.5% Damage Reduction '
+                 'for 1s, stacking up to 20 times.',
+  'Name': 'Ogundimu Reduction Field'}
+]
+
+##### I don't use all of these but why not
+
+# Define all the columns your code expects, in the same order you used originally:
+columns = [
+    'Name', 'Description', 'Category', 'Cost',
+    'Health', 'Shields', 'Armour', 'WP',
+    'Attack speed', 'Weapon lifesteal',
+    'Ability lifesteal', 'AP',
+    'Cooldown reduction', 'Move speed'
+]
+
+
+##### Basically divide by 100 and convert format
+
+# Unpack item stats into simple Python lists:
+item_names       = [r['Name']             for r in records]
+costs            = [r['Cost']             for r in records]
+attack_speeds    = [r.get('Attack speed',0)/100 for r in records]
+weapon_powers    = [r.get('WP',0)/100            for r in records]
+weapon_lifesteal = [r.get('Weapon lifesteal',0)/100 for r in records]
+ability_lifesteal= [r.get('Ability lifesteal',0)/100 for r in records]
+ability_power    = [r.get('AP',0)/100            for r in records]
+move_speed       = [r.get('Move speed',0)/100            for r in records]
+cooldown_reduction = [r.get('Cooldown reduction',0)/100            for r in records]
+healths          = [r.get('Health',0)            for r in records]
+shields          = [r.get('Shields',0)           for r in records]
+armours          = [r.get('Armour',0)            for r in records]
+
+num_items = len(item_names)
+
+
+
+
+
+# 2) Exclude by name and cost
+excluded_lower = {e.lower() for e in excluded_items}
+filtered = [
+    r for r in records
+    if r['Name'].lower() not in excluded_lower
+    and r['Cost'] <= max_cost
+]    
+
+
+
+##### Give these items the conditional stats if the flag is True. If it's false, they still have the minimum stats (e.g., vanadium injection = False has 50 shields)
+
+for r in filtered:
+    name = r['Name']
+    # Advanced Nanobiotics
+    if advanced_nanobiotics and name == "Advanced Nanobiotics":
+        r['Attack speed'] = 10
+    # Weapon Jammer
+    if weapon_jammer and name == "Weapon Jammer":
+        r['Attack speed'] = 10
+    # Superflexor
+    if superflexor and name == "Superflexor":
+        r['AP'] = 25
+    # Vanadium Injection
+    if vanadium_injection and name == "Vanadium Injection":
+        r['Health'] = 50
+        r['WP'] = 10
+        r['AP'] = 10
+        r['Attack speed'] = 10
+        r['Cooldown reduction'] = 10
+        r['Move speed'] = 10
+    # Emergency Chip
+    if emergency_chip and name == "Emergency Chip":
+        r['Weapon lifesteal'] = 15
+    # Vitality Amplifier
+    if vitality_amplifier and name == "Vitality Amplifier":
+        r['AP'] = 10
+
+
+
+
+
+
+
+
+
+
+
+##### A little reminder that I removed this. If I didn't, it shows up hundreds of times in objective = 'life'
+
+if objective == 'life':
+    print(f'\nNote, 1:1 alternatives between green survival items arent shown e.g.: replace [Armored Vest] with [First Aid Kit]')
+
+
+
+
+
+##### Based on the objective, only use relevant items in the brute forcer, so there's less iterations to check
+
+# 3) Objective specific prune
+obj = objective.lower()
+def keep_for_objective(r):
+    if obj == "dps":
+        return (r.get('Attack speed',0) > 0) or (r.get('WP',0) > 0)
+    if obj in ["hps","combined"]:
+        return (
+            (r.get('Attack speed',0) > 0) or
+            (r.get('WP',0) > 0) or
+            (r.get('Weapon lifesteal',0) > 0)
+        )
+    if obj == "coal":
+        return (
+            (r.get('AP',0) > 0) or
+            (r.get('Attack speed',0) > 0) or
+            (against_armour and r['Name']=="Codebreaker")
+        )
+    if obj == "orb":
+        return (r.get('AP',0) > 0) or (against_armour and r['Name']=="Codebreaker")
+    if obj == "life":
+        return (
+            (r.get('Health',0) > 0) or
+            (r.get('Armour',0) > 0) or
+            (r.get('Shields',0) > 0) or
+            r['Name'].lower() in {
+                "vital-e-tee","vishkar condensor",
+                "rustung von wilhelm","meka z-series"
+            }
+        )
+    return True
+
+filtered = [r for r in filtered if keep_for_objective(r)]
+
+
+
+
+
+# 4) Mandatory item check (append missing mandatories)
+lower_to_record = {r['Name'].lower(): r for r in records}
+for mand in mandatory_items:
+    key = mand.lower()
+    if all(r['Name'].lower() != key for r in filtered):
+        if key not in lower_to_record:
+            raise ValueError(f"Mandatory item '{mand}' not found!")
+        filtered.append(lower_to_record[key])
+
+
+# 5) Rebuild your parallel arrays from `filtered`
+item_names       = [r['Name'] for r in filtered]
+costs            = [r['Cost'] for r in filtered]
+attack_speeds    = [r.get('Attack speed',0)/100 for r in filtered]
+weapon_powers    = [r.get('WP',0)/100 for r in filtered]
+weapon_lifesteal = [r.get('Weapon lifesteal',0)/100 for r in filtered]
+ability_lifesteal= [r.get('Ability lifesteal',0)/100 for r in filtered]
+ability_power    = [r.get('AP',0)/100 for r in filtered]
+move_speed       = [r.get('Move speed',0)/100            for r in filtered]
+cooldown_reduction = [r.get('Cooldown reduction',0)/100            for r in filtered]
+healths          = [r.get('Health',0) for r in filtered]
+shields          = [r.get('Shields',0) for r in filtered]
+armours          = [r.get('Armour',0) for r in filtered]
+
+num_items = len(item_names)
+
+# 6) Recompute mandatory_indices
+mandatory_indices = [
+    idx for idx,name in enumerate(item_names)
+    if name.lower() in {m.lower() for m in mandatory_items}
+]
+num_mandatory = len(mandatory_indices)
+# free_indices etc. will come later in your compute_best_by_cost
+
+print(f"\nFiltered down to {num_items} items before optimization.")
+
+
+
+
+
+
+
+##### Formulas for things like right click damage, self healing, coal, orb dps, combined is just dps+hps, life is like a box of chocolates.
+
+
+# Metric functions
+def calc_dps(atk, wp, sel_items):
+    val = 65 * (1+atk) * (1+wp)
+    if deconstruction:
+        val *= 1.2
+    if aerial_distresser and "Aerial Distresser" in sel_items:
+        val *= 1.25
+    if volskaya_ordnance>0 and "Volskaya Ordnance" in sel_items:
+        val *= 1 + (volskaya_ordnance/100)
+    # armour logic
+    if against_armour:
+        val *= 0.85 if "Codebreaker" in sel_items else 0.7
+    return val
+
+def calc_hps(atk, wp, lifesteal, sel_items):
+    dps_val = calc_dps(atk, wp, sel_items)
+    hps_val = dps_val * (lifesteal + (0.30 if ethereal_excision_HS else 0)) + 30*(1+atk)
+    if amaris_antidote and "Amaris Antidote" in sel_items:
+        hps_val *= 1.15
+    return hps_val
+
+
+def calc_coal(ap, atk, sel_items):
+    if "Weapon Jammer" in sel_items and weapon_jammer:
+        atk -= 0.10
+    val = 85*(1+ap)*(1+atk)
+    if deconstruction:
+        val *= 1.2
+    if destructions_divide:
+        val *= 1.3
+    if against_armour:
+        val *= 0.85 if "Codebreaker" in sel_items else 0.7
+    return val
+
+def calc_orb(ap, sel_items):
+    val = 50*(1+ap)
+    if deconstruction:
+        val *= 1.2
+    if against_armour:
+        val *= 0.85 if "Codebreaker" in sel_items else 0.7
+    return val
+
+def calc_combined(atk, wp, lifesteal, sel_items):
+    return calc_dps(atk, wp, sel_items) + calc_hps(atk, wp, lifesteal, sel_items)
+
+def calc_life(sel_items, base_health, hea, she, arm):
+    health = base_health + hea
+    armour_val = she
+    shields_val = arm
+    total = health + armour_val + shields_val
+
+    bonus = 0
+    converted = 0
+    if "Vishkar Condensor" in sel_items:
+        converted+=100
+    if "Vital-e-tee" in sel_items:
+        converted+=100
+
+    if "Rustung Von Wilhelm" in sel_items:
+        bonus+=0.15
+    if "Meka Z-Series" in sel_items:
+        bonus+=0.08
+
+    if bonus>0:
+        total += (total+converted)*bonus
+
+    return total
+
+
+
+
+
+##### Running the brute forcer. It basically combines up to 6 of the relevant items, calculates the objective score and price.
+##### builds a big table, updating the best combination of items (highest objective score) for EVERY price possible.
+##### then once it's done checking everything and making this table, it removes anything that it more expensive AND lower score 
+
+
+
+# Optimized compute_best_by_cost for CodeSkulptor
+def compute_best_by_cost(max_cost, max_items):
+    best_by_cost = {}  # cost -> list of (score, sol_list)
+
+    # Precompute stats for mandatory items
+    mandatory_stats = {
+        "cost": sum(costs[i] for i in mandatory_indices),
+        "atk": sum(attack_speeds[i] for i in mandatory_indices),
+        "wp": sum(weapon_powers[i] for i in mandatory_indices),
+        "wls": sum(weapon_lifesteal[i] for i in mandatory_indices),
+        "ap": sum(ability_power[i] for i in mandatory_indices),
+        "hea": sum(healths[i] for i in mandatory_indices),
+        "she": sum(shields[i] for i in mandatory_indices),
+        "arm": sum(armours[i] for i in mandatory_indices),
+    }
+
+    # Build free indices list
+    free_indices = [i for i in range(num_items) if i not in mandatory_indices]
+
+    for r in range(num_mandatory, max_items + 1):
+        choose_from_free = r - num_mandatory
+        for combo in itertools.combinations(free_indices, choose_from_free):
+            # Compute incremental stats for this combo
+            combo_stats = {
+                "cost": sum(costs[i] for i in combo),
+                "atk": sum(attack_speeds[i] for i in combo),
+                "wp": sum(weapon_powers[i] for i in combo),
+                "wls": sum(weapon_lifesteal[i] for i in combo),
+                "ap": sum(ability_power[i] for i in combo),
+                "hea": sum(healths[i] for i in combo),
+                "she": sum(shields[i] for i in combo),
+                "arm": sum(armours[i] for i in combo),
+            }
+
+            # Combine mandatory and combo stats
+            total_stats = {key: mandatory_stats[key] + combo_stats[key] for key in mandatory_stats}
+            total_cost = total_stats["cost"]
+
+            if total_cost > max_cost:
+                continue
+
+            # Select items for this solution
+            sel_items = [item_names[i] for i in mandatory_indices + list(combo)]
+
+            # Choose score based on the current objective
+            metric_key = objective.lower()
+            if metric_key == "dps":
+                score = calc_dps(total_stats["atk"], total_stats["wp"], sel_items)
+            elif metric_key == "hps":
+                score = calc_hps(total_stats["atk"], total_stats["wp"], total_stats["wls"], sel_items)
+            elif metric_key == "coal":
+                score = calc_coal(total_stats["ap"], total_stats["atk"], sel_items)
+            elif metric_key == "orb":
+                score = calc_orb(total_stats["ap"], sel_items)
+            elif metric_key == "combined":
+                score = calc_combined(total_stats["atk"], total_stats["wp"], total_stats["wls"], sel_items)
+            elif metric_key == "life":
+                base = initial_hp + max(0, (total_cost - 3500) / 500)
+                score = round(calc_life(sel_items, base, total_stats["hea"], total_stats["she"], total_stats["arm"]))
+            else:
+                raise ValueError(f"Unknown objective: {metric_key}")
+
+            # Store or tie‑collect
+            entry = (score, [1 if i in mandatory_indices + list(combo) else 0 for i in range(num_items)])
+            if total_cost not in best_by_cost:
+                best_by_cost[total_cost] = [entry]
+            else:
+                current = best_by_cost[total_cost]
+                best_score = current[0][0]
+                if score > best_score:
+                    best_by_cost[total_cost] = [entry]
+                elif score == best_score:
+                    current.append(entry)
+
+    return best_by_cost
+
+
+
+
+
+
+
+##### If multiple combinations give the same objective score at a certain price, the top one is decided by checking 
+##### the best dps + coal score.
+
+#### This prioritizes dps if the objective is coal and vice versa
+
+
+
+# Start the timer
+start_time = time.time() 
+
+
+# Compute all best combos in one pass
+best_by_cost = compute_best_by_cost(max_cost, max_items)
+
+
+# End the timer
+end_time = time.time()
+
+
+
+# Calculate and print the duration
+elapsed_time = end_time - start_time
+print(f"\nExecution completed in {elapsed_time:.2f} seconds.")
+
+
+
+# Build results list sorted by cost
+results = []
+for cost in sorted(best_by_cost, reverse=True):
+    tied = best_by_cost[cost]
+
+    # 1) Tie‐break to pick the single best_sol
+    def tie_key(pair):
+        score, sol = pair
+        # element‐wise sums
+        atk = sum(sol[i] * attack_speeds[i] for i in range(len(sol)))
+        wp  = sum(sol[i] * weapon_powers[i] for i in range(len(sol)))
+        ap  = sum(sol[i] * ability_power[i] for i in range(len(sol)))
+        sel_items = [item_names[i] for i, bit in enumerate(sol) if bit]
+        return calc_dps(atk, wp, sel_items) + calc_coal(ap, atk, sel_items)
+
+    best_score, best_sol = max(tied, key=tie_key)
+
+    # 2) Collect **only** the tied alternatives for this cost
+    alternatives = []
+    for score, sol in tied:
+        if sol != best_sol:
+            alternatives.append(
+                [item_names[i] for i, bit in enumerate(sol) if bit]
+            )
+
+    # 3) Recalculate metrics using best_sol
+    sel_items = [item_names[i] for i, bit in enumerate(best_sol) if bit]
+    atk   = sum(best_sol[i] * attack_speeds[i] for i in range(len(best_sol)))
+    wp    = sum(best_sol[i] * weapon_powers[i] for i in range(len(best_sol)))
+    wls   = sum(best_sol[i] * weapon_lifesteal[i] for i in range(len(best_sol)))
+    ap    = sum(best_sol[i] * ability_power[i] for i in range(len(best_sol)))
+    hea   = sum(best_sol[i] * healths[i] for i in range(len(best_sol)))
+    she   = sum(best_sol[i] * shields[i] for i in range(len(best_sol)))
+    arm   = sum(best_sol[i] * armours[i] for i in range(len(best_sol)))
+
+    dps_val      = calc_dps(atk, wp, sel_items)
+    hps_val      = calc_hps(atk, wp, wls, sel_items)
+    coal_val     = calc_coal(ap, atk, sel_items)
+    orb_val      = calc_orb(ap, sel_items)
+    combined_val = calc_combined(atk, wp, wls, sel_items)
+    base_health  = initial_hp + max(0, (cost - 3500) / 500)
+    life_val     = round(calc_life(sel_items, base_health, hea, she, arm))
+
+    # 4) Append to results
+    results.append({
+        'cost': cost,
+        'score': best_score,
+        'items': sel_items,
+        'alternatives': alternatives,
+        'dps': dps_val,
+        'hps': hps_val,
+        'coal': coal_val,
+        'orb': orb_val,
+        'combined': combined_val,
+        'life': life_val
+    })
+
+
+
+
+# Prune any entry whose score is a cheaper budget score
+pruned_results = []
+best_score_so_far = -float('inf')
+for entry in sorted(results, key=lambda x: x['cost']):             # New: ascending cost
+    if entry['score'] < best_score_so_far:  # New: strictly less eliminates
+        continue
+    pruned_results.append(entry)
+    if entry['score'] > best_score_so_far:
+        best_score_so_far = entry['score']
+results = pruned_results 
+
+
+
+
+##### For filtering down the Alternatives and printing out the builds.
+
+# Initialize previous score to None
+prev_score = None 
+
+# Print from highest cost downwards, showing succinct swap-based alternatives
+for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
+    cost    = entry['cost']
+    score   = entry['score']
+    items   = entry['items']
+    alts    = entry['alternatives']
+    dps     = entry['dps']
+    hps     = entry['hps']
+    coal    = entry['coal']
+    orb     = entry['orb']
+    life    = entry['life']
+    
+    # Print separator if the score is different from the previous one
+    if prev_score is not None and round(score, 2) != round(prev_score, 2):
+        print("\n---------------------")
+        
+    def format_metric(val):
+        return f"{val:.0f}" if abs(val - round(val)) < 1e-5 else f"{val:.2f}"
+
+    print(f"\nBest {objective} score: {format_metric(score)}")
+    print(f"Items ({len(items)} @ cost {cost}): {items}")
+    
+    # New: drop any k:k alternative if there exists a 1:1 alt fully contained in it. 
+    # e.g., don't want to see the redundant "third" alternative here: [a1] with [a2] ... [b1] with [b2] ... [a1, b1] with [a2, b2]
+    
+    pruned = []
+    # build helper list of (rem_set, add_set, orig_alt)
+    pairs = []
+    base_set = set(items)
+    for alt in alts:
+        alt_set = set(alt)
+        rem = base_set - alt_set
+        add = alt_set - base_set
+        pairs.append((rem, add, alt))
+
+    for rem, add, alt in pairs:
+        # only try to prune those bigger than 1:1
+        if len(rem) > 1:
+            # if any 1:1 is a subset, skip this alt
+            skip = False
+            for rem1, add1, _ in pairs:
+                if len(rem1) == 1 and rem1.issubset(rem) and add1.issubset(add):
+                    skip = True
+                    break
+            if skip:
+                continue
+        pruned.append(alt)
+    alts = pruned
+
+    # New: drop 1:1 alternatives for the green survival items
+    # Don't need to see (obvious and verbose):
+    # Alternative #1: replace ['Armored Vest'] with ['Running Shoes']
+    # Alternative #2: replace ['Armored Vest'] with ['Adrenaline Shot']
+    # etc...
+    
+    unwanted = set(["Armored Vest", "Running Shoes", "Adrenaline Shot", "First Aid Kit", "Siphon Gloves"])
+    filtered = []
+    base_set = set(items)
+    for alt in alts:
+        alt_set = set(alt)
+        rem = base_set - alt_set
+        if len(rem)==1 and rem.pop() in unwanted:
+            continue
+        filtered.append(alt)
+    alts = filtered
+    
+    
+    # Sort alternatives by size (1:1, then 2:2, etc.), then alphabetically
+    base_set = set(items)
+    def alt_key(alt):
+        alt_set = set(alt)
+        rem = base_set - alt_set
+        add = alt_set - base_set
+        # key is (size, sorted remove, sorted add)
+        return (max(len(rem), len(add)), sorted(rem), sorted(add))
+
+    alts.sort(key=alt_key)  # New
+
+    if alts:
+        print("Alternative(s):")
+        for idx, alt in enumerate(alts, start=1):
+            # figure out the swap
+            best_set = set(items)
+            alt_set  = set(alt)
+            remove   = list(best_set - alt_set)
+            add      = list(alt_set - best_set)
+            if remove and add:
+                print(f"  Alternative #{idx}: replace {remove} with {add}")
+    
+    
+    ##### Print the metrics of the best build cleanly
+    print(f"  - DPS: {format_metric(dps)}")
+    print(f"  - HPS: {format_metric(hps)}")
+    print(f"  - COAL: {format_metric(coal)}")
+    print(f"  - ORB: {format_metric(orb)}")
+    print(f"  - LIFE: {life}")
+
+    # Update previous score
+    prev_score = round(score, 2)
+
+
+
+
+
+
+
+
+remove_metrics = []    
+
+
+def plot_results(pruned_results, objective, remove_metrics):
+    """Plot cost vs each metric (except any in remove_metrics)."""
+    costs = [r['cost'] for r in pruned_results]
+    # pick which metrics to plot
+    all_metrics = ['dps', 'hps', 'coal', 'orb', 'combined', 'life']
+    to_plot = [m for m in all_metrics if m not in remove_metrics] 
+    
+    # Calculate the maximum y-value across all selected metrics
+    max_y_value = max([max([r[m] for r in results]) for m in to_plot])
+    y_max = max(300, (max_y_value // 25 + 1) * 25)  # Round up to the nearest 25
+    
+    plt.figure(figsize=(12, 8))
+    for metric in to_plot:                                              
+        scores = [r[metric] for r in results]                            
+        plt.plot(costs, scores, marker='o', label=metric.upper())       
+    plt.xlabel('Cost')
+    plt.ylabel('Score')
+    plt.title(f'{objective.capitalize()} & other metrics vs Cost')
+    plt.legend()
+    plt.grid(True)
+    
+    # Set axis limits
+    plt.xlim(-2500, 75000)
+    plt.ylim(0, y_max)
+    # Configure x-axis and y-axis ticks
+    plt.xticks(range(0, 75001, 10000))
+    plt.yticks(range(0, int(y_max) + 1, 25))
+    
+    plt.show()
+    
+    
+    
+# Call plot_results, pass start_time so it can stop the timer inside
+if pruned_results:
+    plot_results(pruned_results, objective, remove_metrics)
