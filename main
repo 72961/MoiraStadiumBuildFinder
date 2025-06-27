@@ -3,8 +3,6 @@ import math
 import time
 import matplotlib.pyplot as plt
 
-from IPython.display import display, HTML
-display(HTML("<style>.container { width: 90% !important; }</style>"))
 
 # Last updated June 27 2025
 
@@ -28,6 +26,7 @@ display(HTML("<style>.container { width: 90% !important; }</style>"))
 # (Note: Weapon jammer, vanadium, and aerial distresser are NEVER applied to coal, as you can't/can't realistically use them with coal. Superflexor can somewhat be used with coal (3s linger + 5s of AP boost) so I did let it have 25% AP for coal if True.)
 
 # In the item list, I removed apostrophes from the names (e.g., Amaris antidote) because it would mess up the structure of the mandatory/excluded item list.
+# objective = "life" may be slow. Use mandatory_items = ['Rustung Von Wilhelm'] for budgets over ~20000 to speed it up as this item is part of every >20000 life build.
 
 
 # ------------------------------ Just change these things then hit Run in the top left ------------------------------ 
@@ -46,7 +45,7 @@ against_armour = False
 
 advanced_nanobiotics = True
 superflexor = True
-weapon_jammer = True
+weapon_jammer = False
 amaris_antidote = False
 vanadium_injection = False
 volskaya_ordnance = 0
@@ -117,7 +116,8 @@ if remove_awful_items:
     excluded_items += ['Vitality Amplifier']   if not vitality_amplifier   else [] # 25 Shields for 4500... no
     excluded_items += ['Sonic Recharger']
     excluded_items += ['Overdrive Core']
-    excluded_items += ['Aerial Distresser']    if not aerial_distresser    else []
+    excluded_items += ['Aerial Distresser']    if not aerial_distresser or objective == "life"    else []
+    excluded_items += ['Abyss Boots']
 
 # This should be Moira's base game hp.
 initial_hp = 225
