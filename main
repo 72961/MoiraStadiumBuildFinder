@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated June 27 2025
+# Last updated June 28 2025
 
 # Change settings, then find your budget. (e.g., if 10123 cash, look for "Items (6 @ cost 10000)" or cheaper). 
 # Any "Alternatives" are builds that exactly tie this objective score and price, but the "main" build it suggests has a higher right click dps + coal dps
@@ -12,8 +12,7 @@ import matplotlib.pyplot as plt
 # Check the cheaper budgets too to see if they have the same objective score, as they could be a viable alternative. E.g., "orb" will show a build with Extendrils at max cash simply because it costs more than other 15% AP items.
 # If a score is tied at different budgets, there will be no divider, easier to see (-----------)
 
-
-# Objectives: dps (right click damage), hps (right click self heal), coal (coalesence damage), combined (dps+hps), orb (damage orb damage), life (max life)
+# Objectives: dps (right click damage), hps (right click self heal), coal (coalesence damage), combined (dps+hps), orb (damage orb damage), life (max life), chain (chain grasp dps)
 # max items: up to 6. Just leave it at 6, change mandatory_items to e.g. ['Liquid nitrogen'] and leave it at 6 if you want mandatory items.
 # max cost: leave it at 100000. The code is fast enough now that it prints the whole list in a few seconds. You can set it to your exact budget if you don't want to scroll around/slightly faster.
 # ethereal_excision_HS: Should hps and combined use EE's +30% weapon lifesteal?
@@ -28,32 +27,48 @@ import matplotlib.pyplot as plt
 # In the item list, I removed apostrophes from the names (e.g., Amaris antidote) because it would mess up the structure of the mandatory/excluded item list.
 # objective = "life" may be slow. Use mandatory_items = ['Rustung Von Wilhelm'] for budgets over ~20000 to speed it up as this item is part of every >20000 life build.
 
+# objective = "chain" assumes 0 time to throw an orb. The formula is a simplified: (Damage done for 2.54s with chain grasp) + (Normal damage done in the downtime) all divided by the orb cooldown
+# (dps*3*2.54s) + (dps*1*(8*(1-CDR)-2.54s)) all divided by 8*(1-CDR)
+# dps*(7.62 + 8*(1-CDR) - 2.54s) + 1)
+# dps*((0.635)/(1-CDR)) + 1)
 
-# ------------------------------ Just change these things then hit Run in the top left ------------------------------ 
+
+# ------------------------------ Just change these things ------------------------------ 
 
 
 # Settings
-objective = "coal"
+objective = "chain"
 max_items = 6
 max_cost  = 100000
 ethereal_excision_HS = True
 deconstruction = False
 destructions_divide = False
 
-against_shields = False
+# Attack speed
 against_armour = False
-
+against_shields = False
 advanced_nanobiotics = True
-superflexor = True
 weapon_jammer = False
+
+# (Extra) Weapon power
+hardlight_accelerator = 0
+
+# Ability power
+superflexor = True
+charged_plating = True
+vitality_amplifier = False
+
+# Cooldown reduction
+biotech_maximizer = 0
+
+# Misc boosts
+aerial_distresser = False
 amaris_antidote = False
 vanadium_injection = False
 volskaya_ordnance = 0
 
+# Weapon lifesteal
 emergency_chip = False
-vitality_amplifier = False
-
-aerial_distresser = False
 
 mandatory_items = []
 excluded_items = []
@@ -89,13 +104,16 @@ settings = {
     "Against armour": against_armour,
     "Advanced nanobiotics": advanced_nanobiotics,
     "Superflexor": superflexor,
+    "Charged Plating (only AP)": charged_plating,
     "Weapon jammer": weapon_jammer,
     "Amari's antidote": amaris_antidote,
     "Vanadium injection": vanadium_injection,
     "Volskaya ordnance boost": volskaya_ordnance,
     "Emergency chip": emergency_chip,
     "Vitality amplifier": vitality_amplifier,
-    "Aerial Distresser": aerial_distresser
+    "Aerial distresser": aerial_distresser,
+    "Hardlight accelerator": hardlight_accelerator,
+    "Biotech maximizer": biotech_maximizer
 }
 
 
@@ -118,6 +136,7 @@ if remove_awful_items:
     excluded_items += ['Overdrive Core']
     excluded_items += ['Aerial Distresser']    if not aerial_distresser or objective == "life"    else []
     excluded_items += ['Abyss Boots']
+    excluded_items += ['Ironclad Exhaust Ports'] # 5% CDR for 4000... no
 
 # This should be Moira's base game hp.
 initial_hp = 225
@@ -297,6 +316,10 @@ records = [
   'Cost': 1000,
   'Description': '10% Ability Power',
   'Name': 'Power Playbook'},
+ {'Category': 'Ability',
+  'Cost': 1000,
+  'Description': 'After you spend your Ultimate Charge, gain 25 Armor and 10% Ability Power for the rest of the round.',
+  'Name': 'Charged Plating'},
  {'Ability lifesteal': 10,
   'Category': 'Ability',
   'Cost': 1000,
@@ -676,10 +699,17 @@ for r in filtered:
     # Vitality Amplifier
     if vitality_amplifier and name == "Vitality Amplifier":
         r['AP'] = 10
-
-
-
-
+    # Charged Plating
+    if charged_plating and name == "Charged Plating":
+        r['AP'] = 10
+    # Biotech Maximizer
+    if (biotech_maximizer>0) and name == "Biotech Maximizer":
+        r['Cooldown reduction'] = biotech_maximizer
+    # Hardlight Accelerator. The boost you want to give it plus it's 10% base WP
+    if (hardlight_accelerator>0) and name == "Hardlight Accelerator":
+        r['WP'] = 10 + hardlight_accelerator
+        
+        
 
 
 
@@ -692,7 +722,8 @@ for r in filtered:
 if objective == 'life':
     print(f'\nNote, 1:1 alternatives between green survival items arent shown e.g.: replace [Armored Vest] with [First Aid Kit]')
 
-
+if charged_plating and objective == 'life':
+    print(f'\nNote, charged_plating = True does not give Charged Plating 25 armour (only 10% AP). If I gave it armour it would make life calculations much slower/lengthy.')
 
 
 
@@ -726,6 +757,12 @@ def keep_for_objective(r):
                 "vital-e-tee","vishkar condensor",
                 "rustung von wilhelm","meka z-series"
             }
+        )
+    if obj == "chain":
+        return (
+            (r.get('Attack speed',0) > 0) or
+            (r.get('WP',0) > 0) or
+            (r.get('Cooldown reduction',0) > 0)
         )
     return True
 
@@ -777,6 +814,11 @@ print(f"\nFiltered down to {num_items} items before optimization.")
 
 
 
+
+
+
+
+
 ##### Formulas for things like right click damage, self healing, coal, orb dps, combined is just dps+hps, life is like a box of chocolates.
 
 
@@ -794,13 +836,17 @@ def calc_dps(atk, wp, sel_items):
         val *= 0.85 if "Codebreaker" in sel_items else 0.7
     return val
 
+def calc_chain(atk, wp, cdr, sel_items):
+    dps_val = calc_dps(atk, wp, sel_items)
+    chain_multiplier = (0.635)/(1 - cdr) + 1
+    return dps_val * chain_multiplier
+
 def calc_hps(atk, wp, lifesteal, sel_items):
     dps_val = calc_dps(atk, wp, sel_items)
     hps_val = dps_val * (lifesteal + (0.30 if ethereal_excision_HS else 0)) + 30*(1+atk)
     if amaris_antidote and "Amaris Antidote" in sel_items:
         hps_val *= 1.15
     return hps_val
-
 
 def calc_coal(ap, atk, sel_items):
     if "Weapon Jammer" in sel_items and weapon_jammer:
@@ -869,6 +915,7 @@ def compute_best_by_cost(max_cost, max_items):
         "wp": sum(weapon_powers[i] for i in mandatory_indices),
         "wls": sum(weapon_lifesteal[i] for i in mandatory_indices),
         "ap": sum(ability_power[i] for i in mandatory_indices),
+        "cdr": sum(cooldown_reduction[i] for i in mandatory_indices),
         "hea": sum(healths[i] for i in mandatory_indices),
         "she": sum(shields[i] for i in mandatory_indices),
         "arm": sum(armours[i] for i in mandatory_indices),
@@ -887,10 +934,10 @@ def compute_best_by_cost(max_cost, max_items):
                 "wp": sum(weapon_powers[i] for i in combo),
                 "wls": sum(weapon_lifesteal[i] for i in combo),
                 "ap": sum(ability_power[i] for i in combo),
+                "cdr": sum(cooldown_reduction[i] for i in combo),
                 "hea": sum(healths[i] for i in combo),
                 "she": sum(shields[i] for i in combo),
-                "arm": sum(armours[i] for i in combo),
-            }
+                "arm": sum(armours[i] for i in combo)}
 
             # Combine mandatory and combo stats
             total_stats = {key: mandatory_stats[key] + combo_stats[key] for key in mandatory_stats}
@@ -912,6 +959,8 @@ def compute_best_by_cost(max_cost, max_items):
                 score = calc_coal(total_stats["ap"], total_stats["atk"], sel_items)
             elif metric_key == "orb":
                 score = calc_orb(total_stats["ap"], sel_items)
+            elif metric_key == "chain":
+                score = calc_chain(total_stats["atk"], total_stats["wp"], total_stats["cdr"], sel_items)
             elif metric_key == "combined":
                 score = calc_combined(total_stats["atk"], total_stats["wp"], total_stats["wls"], sel_items)
             elif metric_key == "life":
@@ -988,8 +1037,7 @@ for cost in sorted(best_by_cost, reverse=True):
     for score, sol in tied:
         if sol != best_sol:
             alternatives.append(
-                [item_names[i] for i, bit in enumerate(sol) if bit]
-            )
+                [item_names[i] for i, bit in enumerate(sol) if bit])
 
     # 3) Recalculate metrics using best_sol
     sel_items = [item_names[i] for i, bit in enumerate(best_sol) if bit]
@@ -997,6 +1045,7 @@ for cost in sorted(best_by_cost, reverse=True):
     wp    = sum(best_sol[i] * weapon_powers[i] for i in range(len(best_sol)))
     wls   = sum(best_sol[i] * weapon_lifesteal[i] for i in range(len(best_sol)))
     ap    = sum(best_sol[i] * ability_power[i] for i in range(len(best_sol)))
+    cdr   = sum(best_sol[i] * cooldown_reduction[i] for i in range(len(best_sol)))
     hea   = sum(best_sol[i] * healths[i] for i in range(len(best_sol)))
     she   = sum(best_sol[i] * shields[i] for i in range(len(best_sol)))
     arm   = sum(best_sol[i] * armours[i] for i in range(len(best_sol)))
@@ -1005,6 +1054,7 @@ for cost in sorted(best_by_cost, reverse=True):
     hps_val      = calc_hps(atk, wp, wls, sel_items)
     coal_val     = calc_coal(ap, atk, sel_items)
     orb_val      = calc_orb(ap, sel_items)
+    chain_val    = calc_chain(atk, wp, cdr, sel_items)
     combined_val = calc_combined(atk, wp, wls, sel_items)
     base_health  = initial_hp + max(0, (cost - 3500) / 500)
     life_val     = round(calc_life(sel_items, base_health, hea, she, arm))
@@ -1019,9 +1069,9 @@ for cost in sorted(best_by_cost, reverse=True):
         'hps': hps_val,
         'coal': coal_val,
         'orb': orb_val,
+        'chain': chain_val,
         'combined': combined_val,
-        'life': life_val
-    })
+        'life': life_val})
 
 
 
@@ -1045,7 +1095,7 @@ results = pruned_results
 # Initialize previous score to None
 prev_score = None 
 
-# Print from highest cost downwards, showing succinct swap-based alternatives
+# Print from highest cost downwards, showing succinct swap-based alternatives. I could include     chain   = entry['chain'] here, as it's an objective... but it's niche...
 for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
     cost    = entry['cost']
     score   = entry['score']
@@ -1100,7 +1150,7 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
     # Alternative #2: replace ['Armored Vest'] with ['Adrenaline Shot']
     # etc...
     
-    unwanted = set(["Armored Vest", "Running Shoes", "Adrenaline Shot", "First Aid Kit", "Siphon Gloves"])
+    unwanted = set(["Armored Vest", "Running Shoes", "Adrenaline Shot", "First Aid Kit", "Siphon Gloves", "Power Playbook", "Charged Plating"])
     filtered = []
     base_set = set(items)
     for alt in alts:
@@ -1135,7 +1185,7 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
                 print(f"  Alternative #{idx}: replace {remove} with {add}")
     
     
-    ##### Print the metrics of the best build cleanly
+    ##### Print the metrics of the best build cleanly. I could put an IF statement in here if chaingrasp is the objective
     print(f"  - DPS: {format_metric(dps)}")
     print(f"  - HPS: {format_metric(hps)}")
     print(f"  - COAL: {format_metric(coal)}")
@@ -1151,24 +1201,26 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
 
 
 
+remove_metrics = []
 
-remove_metrics = []    
+if not objective == "chain":
+    remove_metrics = ['chain']
 
 
 def plot_results(pruned_results, objective, remove_metrics):
     """Plot cost vs each metric (except any in remove_metrics)."""
     costs = [r['cost'] for r in pruned_results]
     # pick which metrics to plot
-    all_metrics = ['dps', 'hps', 'coal', 'orb', 'combined', 'life']
+    all_metrics = ['dps', 'hps', 'coal', 'orb', 'combined', 'life', 'chain']
     to_plot = [m for m in all_metrics if m not in remove_metrics] 
     
     # Calculate the maximum y-value across all selected metrics
-    max_y_value = max([max([r[m] for r in results]) for m in to_plot])
+    max_y_value = max([max([r[m] for r in pruned_results]) for m in to_plot])
     y_max = max(300, (max_y_value // 25 + 1) * 25)  # Round up to the nearest 25
     
     plt.figure(figsize=(12, 8))
     for metric in to_plot:                                              
-        scores = [r[metric] for r in results]                            
+        scores = [r[metric] for r in pruned_results]                            
         plt.plot(costs, scores, marker='o', label=metric.upper())       
     plt.xlabel('Cost')
     plt.ylabel('Score')
@@ -1190,8 +1242,13 @@ def plot_results(pruned_results, objective, remove_metrics):
 # Call plot_results, pass start_time so it can stop the timer inside
 if pruned_results:
     plot_results(pruned_results, objective, remove_metrics)
-    
-    
+
+# Construct and print settings dynamically (under the plot as a reminder)
+print("\n".join([f"{key}: {value}" for key, value in settings.items() if value]))
+
+
+
+
 # This code:
 # - Starts with a list of Moira-relevant stadium items (e.g., I didn't include max ammo items because they're either completely useless or barely give stats)
 # - You define flags for certain items; this changes item stats (e.g., advanced_nanobiotics = True assumes you're always getting the 10% attack speed boost)
