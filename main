@@ -33,7 +33,6 @@ import matplotlib.pyplot as plt
 # dps*((0.572875)/(1-CDR)) + 1)
 
 
-# Need to remove vanadium injection stats from Coal printout
 
 # ------------------------------ Just change these things ------------------------------ 
 
