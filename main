@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated June 28 2025
+# Last updated June 29 2025
 
 # Change settings, then find your budget. (e.g., if 10123 cash, look for "Items (6 @ cost 10000)" or cheaper). 
 # Any "Alternatives" are builds that exactly tie this objective score and price, but the "main" build it suggests has a higher right click dps + coal dps
@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Check the cheaper budgets too to see if they have the same objective score, as they could be a viable alternative. E.g., "orb" will show a build with Extendrils at max cash simply because it costs more than other 15% AP items.
 # If a score is tied at different budgets, there will be no divider, easier to see (-----------)
 
-# Objectives: dps (right click damage), hps (right click self heal), coal (coalesence damage), combined (dps+hps), orb (damage orb damage), life (max life), chain (chain grasp dps)
+# Objectives: dps (right click damage), hps (right click self heal), coal (coalesence damage), combined (dps+hps), orb (damage orb damage), life (max life), chain (chain grasp dps), cdr (cooldown reduction)
 # max items: up to 6. Just leave it at 6, change mandatory_items to e.g. ['Liquid nitrogen'] and leave it at 6 if you want mandatory items.
 # max cost: leave it at 100000. The code is fast enough now that it prints the whole list in a few seconds. You can set it to your exact budget if you don't want to scroll around/slightly faster.
 # ethereal_excision_HS: Should hps and combined use EE's +30% weapon lifesteal?
@@ -27,31 +27,33 @@ import matplotlib.pyplot as plt
 # In the item list, I removed apostrophes from the names (e.g., Amaris antidote) because it would mess up the structure of the mandatory/excluded item list.
 # objective = "life" may be slow. Use mandatory_items = ['Rustung Von Wilhelm'] for budgets over ~20000 to speed it up as this item is part of every >20000 life build.
 
-# objective = "chain" assumes 0 time to throw an orb. The formula is a simplified: (Damage done for 2.54s with chain grasp) + (Normal damage done in the downtime) all divided by the orb cooldown
-# (dps*3*2.54s) + (dps*1*(8*(1-CDR)-2.54s)) all divided by 8*(1-CDR)
-# dps*(7.62 + 8*(1-CDR) - 2.54s) + 1)
-# dps*((0.635)/(1-CDR)) + 1)
+# objective = "chain" assumes 0 time to throw an orb. The formula is a simplified: (Damage done for 2.54s with chain grasp) + (Normal damage done in the rest of the time minus 2.54s and minus 0.497s to throw the orb) all divided by the orb cooldown
+# (dps*3*2.54s) + (dps*1*(8*(1-CDR)-2.54s-0.497s)) all divided by 8*(1-CDR)
+# dps*(7.62 + 8*(1-CDR) - 2.54s - 0.497s) + 1)
+# dps*((0.572875)/(1-CDR)) + 1)
 
+
+# Need to remove vanadium injection stats from Coal printout
 
 # ------------------------------ Just change these things ------------------------------ 
 
 
 # Settings
-objective = "dps"
-max_items = 4
-max_cost  = 40000
+objective = "chain"
+max_items = 6
+max_cost  = 100000
 ethereal_excision_HS = True
 deconstruction = False
 destructions_divide = False
 
 # Attack speed
-against_armour = True
-against_shields = True
+against_armour = False
+against_shields = False
 advanced_nanobiotics = True
-weapon_jammer = False
+weapon_jammer = True
 
 # (Extra) Weapon power
-hardlight_accelerator = 5
+hardlight_accelerator = 15
 
 # Ability power
 superflexor = True
@@ -59,24 +61,24 @@ charged_plating = True
 vitality_amplifier = False
 
 # Cooldown reduction
-biotech_maximizer = 0
+biotech_maximizer = 10
 
 # Misc boosts
 aerial_distresser = False
 amaris_antidote = False
-vanadium_injection = False
+vanadium_injection = True
 volskaya_ordnance = 0
 
 # Weapon lifesteal
 emergency_chip = False
 
-mandatory_items = []
+mandatory_items = ['icy coolant', 'multi-tool', 'martian mender', 'iridescent iris', 'hardlight accelerator', 'Vanadium Injection']
 excluded_items = []
 
+# >>Dont<< use apostrophes in the names!
 # Examples^:
 # mandatory_items = ['Amaris antidote']
-# mandatory_items = ['El-saka Supressor', 'Ogundimu Reduction Field']
-# >>Dont<< use apostrophes in the names!
+# mandatory_items = ['El-saka Supressor', 'Ogundimu Reduction Field', 'lumerico fusion drive']
 # 'cybervenom','liquid nitrogen','alternative energy','biotech maximizer'
 
 remove_awful_items = True
@@ -85,7 +87,7 @@ remove_awful_items = True
 # e.g. El-Saka Supressor (10% WP, crits apply Healing Reduction) because it's just 10% WP for 11000.
 # Also conditionally excludes items, e.g., if both against_shields and against_armour = False, Shieldbuster is excluded because it's just 5% WP for 4000.
 
-# You can override this list by making your desired item(s) mandatory.
+# You can override things in the remove_awful_items list by making your desired item(s) mandatory.
 
 
 
@@ -138,19 +140,41 @@ if remove_awful_items:
     excluded_items += ['Abyss Boots']
     excluded_items += ['Ironclad Exhaust Ports'] # 5% CDR for 4000... no
 
-# This should be Moira's base game hp.
+# This should be Moira's base game hp (225).
 initial_hp = 225
 
+
+
+# Warnings:
+
 if initial_hp > 351:
-    print("Note, tanks have different scaling for their bonus health based on Stadium cash. If you're reading this I haven't gotten around to implementing it yet. It should be 1 health per 750 but it's bugged as of Season 17; tanks get 1 health per 250.")
+    print(f"\nNote, tanks have different scaling for their bonus health based on Stadium cash. If you're reading this I haven't gotten around to implementing it yet. It should be 1 health per 750 but it's bugged as of June 28 (Season 2); tanks get 1 health per 250.")
 
 if aerial_distresser and (objective == "dps" or objective == "combined"):
-    print("I'm pretty sure Aerial Distresser is a 1.25x multiplier on whatever right click damage you're doing. It works that way for most heroes, hard to calculate on Moira. I coded it in this way, hope I'm right.")
+    print(f"\nNote, I'm pretty sure Aerial Distresser is a 1.25x multiplier on whatever right click damage you're doing. It works that way for most heroes, hard to calculate on Moira. I coded it in this way, hope I'm right.")
+
+if aerial_distresser and objective == "chain":
+    print(f'\nNote, the code right now will apply Aerial Distresser boost to ALL chaingrasp targets. It should only apply to the right click target. Set aerial_distresser = False or fix lol.')
+
+if volskaya_ordnance > 0 and objective == "chain":
+    print(f'\nNote, the code right now will apply Volskaya Ordnance boost to ALL chaingrasp targets. It should only apply to the right click target. Set volskaya_ordnance = 0 or fix lol.')
+
+if objective == 'life':
+    print(f'\nNote, 1:1 alternatives between green survival items arent shown e.g.: replace [Armored Vest] with [First Aid Kit]')
+
+if charged_plating and objective == 'life':
+    print(f'\nNote, charged_plating = True does not give Charged Plating 25 armour (only 10% AP). If I gave it armour it would make life calculations much slower/lengthy.')
+
+if hardlight_accelerator > 15:
+    print(f'\nNote, input a number between 0 and 15 for hardlight_accelerator, as this flag is the bonus weapon power (not including the base 10% WP).')
+
+if biotech_maximizer > 35:
+    print(f'\nNote, input a number between 0 and 35 for biotech_maximizer, as this flag is the bonus orb CDR (never more than 5 allies + kiriko clone + BOB ... if it even works on BOB).')
 
 
+# Looks cleaner in Jupyter notebook
 from IPython.display import display, HTML
 display(HTML("<style>.container { width: 90% !important; }</style>"))
-
 
 
 
@@ -672,7 +696,7 @@ filtered = [
 
 
 
-##### Give these items the conditional stats if the flag is True. If it's false, they still have the minimum stats (e.g., vanadium injection = False has 50 shields)
+##### Give these items the conditional stats if the flag is True. If it's false, they still have the minimum stats (e.g., vanadium injection = False still has 50 shields)
 
 for r in filtered:
     name = r['Name']
@@ -703,29 +727,15 @@ for r in filtered:
     if charged_plating and name == "Charged Plating":
         r['AP'] = 10
     # Biotech Maximizer
-    if (biotech_maximizer>0) and name == "Biotech Maximizer":
-        r['Cooldown reduction'] = biotech_maximizer
+    if (biotech_maximizer > 0) and name == "Biotech Maximizer":
+        r['Cooldown reduction'] = min(biotech_maximizer, 35)
     # Hardlight Accelerator. The boost you want to give it plus it's 10% base WP
-    if (hardlight_accelerator>0) and name == "Hardlight Accelerator":
-        r['WP'] = 10 + hardlight_accelerator
+    if (hardlight_accelerator > 0) and name == "Hardlight Accelerator":
+        r['WP'] = min(10 + hardlight_accelerator, 25)
     # Shieldbuster
     if (against_shields or against_armour) and name == "Shieldbuster":
-        r['Attack speed'] = 15   
-        
+        r['Attack speed'] = 15
 
-
-
-
-
-
-
-##### A little reminder that I removed this. If I didn't, it shows up hundreds of times in objective = 'life'
-
-if objective == 'life':
-    print(f'\nNote, 1:1 alternatives between green survival items arent shown e.g.: replace [Armored Vest] with [First Aid Kit]')
-
-if charged_plating and objective == 'life':
-    print(f'\nNote, charged_plating = True does not give Charged Plating 25 armour (only 10% AP). If I gave it armour it would make life calculations much slower/lengthy.')
 
 
 
@@ -764,6 +774,10 @@ def keep_for_objective(r):
         return (
             (r.get('Attack speed',0) > 0) or
             (r.get('WP',0) > 0) or
+            (r.get('Cooldown reduction',0) > 0)
+        )
+    if obj == "cdr":
+        return (
             (r.get('Cooldown reduction',0) > 0)
         )
     return True
@@ -838,9 +852,20 @@ def calc_dps(atk, wp, sel_items):
         val *= 0.85 if "Codebreaker" in sel_items else 0.7
     return val
 
+
+
+# So, calc_chain SHOULD truly be chain_multiplier = (0.572875)/(1 - cdr) + 1 ... this includes the 0.497s downtime of firing the orb... so the score it outputs is truly the longterm average right click dps
+# But that's a little harsh... it acts like the thrown orbs get no value and the fade CDR gets no value. Albiet, it also assumes pressing E ASAP and getting full value out of all CGs... idk
+
+# If I want to use an older formula that doesn't include the 0.497s to fire an orb: chain_multiplier = (0.635)/(1 - cdr) + 1
+
+def calc_cdr(cdr, sel_items):
+    cdr_val = cdr*100
+    return cdr_val
+
 def calc_chain(atk, wp, cdr, sel_items):
     dps_val = calc_dps(atk, wp, sel_items)
-    chain_multiplier = (0.635)/(1 - cdr) + 1
+    chain_multiplier = (0.572875)/(1 - cdr) + 1
     return dps_val * chain_multiplier
 
 def calc_hps(atk, wp, lifesteal, sel_items):
@@ -853,6 +878,9 @@ def calc_hps(atk, wp, lifesteal, sel_items):
 def calc_coal(ap, atk, sel_items):
     if "Weapon Jammer" in sel_items and weapon_jammer:
         atk -= 0.10
+    if "Vanadium Injection" in sel_items and vanadium_injection:
+        atk -= 0.10
+        ap -= 0.10    
     val = 85*(1+ap)*(1+atk)
     if deconstruction:
         val *= 1.2
@@ -963,6 +991,8 @@ def compute_best_by_cost(max_cost, max_items):
                 score = calc_orb(total_stats["ap"], sel_items)
             elif metric_key == "chain":
                 score = calc_chain(total_stats["atk"], total_stats["wp"], total_stats["cdr"], sel_items)
+            elif metric_key == "cdr":
+                score = calc_cdr(total_stats["cdr"], sel_items)
             elif metric_key == "combined":
                 score = calc_combined(total_stats["atk"], total_stats["wp"], total_stats["wls"], sel_items)
             elif metric_key == "life":
@@ -1057,6 +1087,7 @@ for cost in sorted(best_by_cost, reverse=True):
     coal_val     = calc_coal(ap, atk, sel_items)
     orb_val      = calc_orb(ap, sel_items)
     chain_val    = calc_chain(atk, wp, cdr, sel_items)
+    cdr_val      = calc_cdr(cdr, sel_items)
     combined_val = calc_combined(atk, wp, wls, sel_items)
     base_health  = initial_hp + max(0, (cost - 3500) / 500)
     life_val     = round(calc_life(sel_items, base_health, hea, she, arm))
@@ -1072,6 +1103,7 @@ for cost in sorted(best_by_cost, reverse=True):
         'coal': coal_val,
         'orb': orb_val,
         'chain': chain_val,
+        'cdr': cdr_val,
         'combined': combined_val,
         'life': life_val})
 
@@ -1108,6 +1140,7 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
     coal    = entry['coal']
     orb     = entry['orb']
     life    = entry['life']
+    cdr     = entry['cdr']
     
     # Print separator if the score is different from the previous one
     if prev_score is not None and round(score, 2) != round(prev_score, 2):
@@ -1193,6 +1226,7 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
     print(f"  - COAL: {format_metric(coal)}")
     print(f"  - ORB: {format_metric(orb)}")
     print(f"  - LIFE: {life}")
+    print(f"  - CDR: {format_metric(cdr)}")
 
     # Update previous score
     prev_score = round(score, 2)
@@ -1206,14 +1240,18 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
 remove_metrics = []
 
 if not objective == "chain":
-    remove_metrics = ['chain']
+    remove_metrics += ['chain']
 
+if not objective == "chain" or objective == "cdr":
+    remove_metrics += ['cdr']    
+    
+    
 
 def plot_results(pruned_results, objective, remove_metrics):
     """Plot cost vs each metric (except any in remove_metrics)."""
     costs = [r['cost'] for r in pruned_results]
     # pick which metrics to plot
-    all_metrics = ['dps', 'hps', 'coal', 'orb', 'combined', 'life', 'chain']
+    all_metrics = ['dps', 'hps', 'coal', 'orb', 'combined', 'life', 'chain', 'cdr']
     to_plot = [m for m in all_metrics if m not in remove_metrics] 
     
     # Calculate the maximum y-value across all selected metrics
@@ -1258,4 +1296,4 @@ print("\n".join([f"{key}: {value}" for key, value in settings.items() if value])
 # - The code checks EVERY combination of items limited to these constraints and calculates its objective score and budget (total cost)
 # - If a new combination has a higher score than an older combination for a specific budget, the new one replaces it. *Ties are stored.
 # - Once all combinations are checked, this list of budgets and scores is reduced down by removing anything that is both more expensive and has a worse score than something cheaper. Ties aren't removed and are denoted by not having a divider (---------------------).
-# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. 
+# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. If there are multiple alternatives, the list is arbitrary.
