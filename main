@@ -37,21 +37,21 @@ import matplotlib.pyplot as plt
 
 
 # Settings
-objective = "chain"
-max_items = 6
-max_cost  = 100000
+objective = "dps"
+max_items = 4
+max_cost  = 40000
 ethereal_excision_HS = True
 deconstruction = False
 destructions_divide = False
 
 # Attack speed
-against_armour = False
-against_shields = False
+against_armour = True
+against_shields = True
 advanced_nanobiotics = True
 weapon_jammer = False
 
 # (Extra) Weapon power
-hardlight_accelerator = 0
+hardlight_accelerator = 5
 
 # Ability power
 superflexor = True
@@ -708,7 +708,9 @@ for r in filtered:
     # Hardlight Accelerator. The boost you want to give it plus it's 10% base WP
     if (hardlight_accelerator>0) and name == "Hardlight Accelerator":
         r['WP'] = 10 + hardlight_accelerator
-        
+    # Shieldbuster
+    if (against_shields or against_armour) and name == "Shieldbuster":
+        r['Attack speed'] = 15   
         
 
 
@@ -1256,4 +1258,4 @@ print("\n".join([f"{key}: {value}" for key, value in settings.items() if value])
 # - The code checks EVERY combination of items limited to these constraints and calculates its objective score and budget (total cost)
 # - If a new combination has a higher score than an older combination for a specific budget, the new one replaces it. *Ties are stored.
 # - Once all combinations are checked, this list of budgets and scores is reduced down by removing anything that is both more expensive and has a worse score than something cheaper. Ties aren't removed and are denoted by not having a divider (---------------------).
-# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. If there are multiple alternatives, the list is arbitrary.
+# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. 
