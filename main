@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated June 29 2025
+# Last updated July 8 2025
 
 # Change settings, then find your budget. (e.g., if 10123 cash, look for "Items (6 @ cost 10000)" or cheaper). 
 # Any "Alternatives" are builds that exactly tie this objective score and price, but the "main" build it suggests has a higher right click dps + coal dps
@@ -33,12 +33,11 @@ import matplotlib.pyplot as plt
 # dps*((0.572875)/(1-CDR)) + 1)
 
 
-
 # ------------------------------ Just change these things ------------------------------ 
 
 
 # Settings
-objective = "chain"
+objective = "dps"
 max_items = 6
 max_cost  = 100000
 ethereal_excision_HS = True
@@ -52,11 +51,11 @@ advanced_nanobiotics = True
 weapon_jammer = True
 
 # (Extra) Weapon power
-hardlight_accelerator = 15
+hardlight_accelerator = 0
 
 # Ability power
 superflexor = True
-charged_plating = True
+charged_plating = False
 vitality_amplifier = False
 
 # Cooldown reduction
@@ -65,13 +64,13 @@ biotech_maximizer = 10
 # Misc boosts
 aerial_distresser = False
 amaris_antidote = False
-vanadium_injection = True
+vanadium_injection = False
 volskaya_ordnance = 0
 
 # Weapon lifesteal
 emergency_chip = False
 
-mandatory_items = ['icy coolant', 'multi-tool', 'martian mender', 'iridescent iris', 'hardlight accelerator', 'Vanadium Injection']
+mandatory_items = []
 excluded_items = []
 
 # >>Dont<< use apostrophes in the names!
@@ -263,9 +262,15 @@ records = [
   'Description': '10% Weapon Power. +50% Max Biotic Energy.',
   'Name': 'High Capacity Tubing',
   'WP': 10},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 9000,
+  'Description': 'Weapon damage to airborne enemies deal 25% bonus damage over 3s.',
+  'Name': 'Aerial Distresser',
+  'Shields': 25},
  {'Category': 'Weapon',
   'Cost': 9000,
-  'Description': '15% Weapon Power, Ignore 50% of Armorâ€™s damage reduction.',
+  'Description': '15% Weapon Power, Ignore 50% of Armors damage reduction.',
   'Name': 'Codebreaker',
   'WP': 15},
  {'Attack speed': 10,
@@ -274,12 +279,6 @@ records = [
   'Description': '10% Attack Speed, Deal 5% increased Weapon damage for every '
                  '100 Max Life they have more than you, up to 20%.',
   'Name': 'Volskaya Ordnance'},
- {'Attack speed': 10,
-  'Category': 'Weapon',
-  'Cost': 10000,
-  'Description': 'Weapon damage to airborne enemies deal 25% bonus damage over 3s.',
-  'Name': 'Aerial Distresser',
-  'Shields': 25},
  {'Armour': 25,
   'Category': 'Weapon',
   'Cost': 10000,
@@ -334,6 +333,11 @@ records = [
   'Description': '10% Ability Power. 15% Attack Speed. When you use Fade, '
                  'refill your Biotic Energy.',
   'Name': 'Alternative Energy'},
+ {'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': '15% Biotic Grasp Secondary Fire Range.',
+  'Name': 'Subatomic Splitter',
+  'WP': 10},
  {'AP': 10,
   'Category': 'Ability',
   'Cost': 1000,
@@ -413,14 +417,6 @@ records = [
   'Name': 'Sonic Recharger',
   'Shields': 25},
  {'AP': 10,
-  'Attack speed': 10,
-  'Category': 'Ability',
-  'Cost': 9500,
-  'Description': '10% Ability Power, 10% Attack Speed, After using an ability, '
-                 'your next 3 instances of Weapon Damage deal additional '
-                 'damage equal to 3% of the targetâ€™s Life.',
-  'Name': 'Three-tap Tommygun'},
- {'AP': 10,
   'Category': 'Ability',
   'Cost': 10000,
   'Description': '25 Health, 10% Ability Power, When you use an ability that '
@@ -456,6 +452,14 @@ records = [
   'Description': '10% Ability Power, 5% Cooldown Reduction, Dealing ability '
                  'damage applies 30% healing reduction for 2s.',
   'Name': 'Cybervenom'},
+  {'AP': 10,
+  'Attack speed': 10,
+  'Category': 'Ability',
+  'Cost': 10500,
+  'Description': '10% Ability Power, 10% Attack Speed, After using an ability, '
+                 'your next 3 instances of Weapon Damage deal additional '
+                 'damage equal to 3% of the targets Life.',
+  'Name': 'Three-tap Tommygun'},
  {'AP': 20,
   'Category': 'Ability',
   'Cooldown reduction': 10,
@@ -467,7 +471,7 @@ records = [
   'Category': 'Ability',
   'Cost': 11000,
   'Description': '25 Health, 10% Ability Power, Dealing ability damage slows '
-                 'the targetâ€™s move speed by 20% for 3s.',
+                 'the targets move speed by 20% for 3s.',
   'Health': 25,
   'Name': 'Liquid Nitrogen'},
  {'AP': 10,
@@ -485,8 +489,9 @@ records = [
  {'AP': 15,
   'Category': 'Ability',
   'Cost': 10000,
-  'Description': '15% Ability Power. Allies healed by Coalescence deal 15% '
+  'Description': '25 Health, 15% Ability Power. Allies healed by Coalescence deal 15% '
                  'increased damage.',
+  'Health': 25,
   'Name': 'Coalegion'},
  {'AP': 15,
   'Category': 'Ability',
@@ -528,22 +533,27 @@ records = [
   'Name': 'Siphon Gloves'},
  {'Category': 'Survival',
   'Cost': 3750,
-  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
-                 'Damage.',
-  'Name': 'Reinforced Titanium',
-  'Shields': 25},
- {'Category': 'Survival',
-  'Cost': 3750,
   'Description': '25 Shields. -40% Incoming Negative Effect Duration. When '
                  'affected by Stun, Sleep, or hinder, restore 10% of your max '
                  'Life over 3s.',
   'Name': 'Cushioned Padding',
   'Shields': 25},
  {'Category': 'Survival',
+  'Cost': 3750,
+  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
+                 'Damage.',
+  'Name': 'Reinforced Titanium',
+  'Shields': 25},
+ {'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
+  'Name': 'Iron Eyes',
+  'Shields': 25},
+ {'Category': 'Survival',
   'Cooldown reduction': 5,
   'Cost': 4000,
   'Description': '5% Cooldown Reduction. When you use an ability, gain 25 '
-                 'Overhealth over 3s.',
+                 'Overhealth for 3s.',
   'Name': 'Ironclad Exhaust Ports'},
  {'Category': 'Survival',
   'Cost': 4000,
@@ -561,11 +571,6 @@ records = [
   'Description': '25 Armor. While you have Armor, take 10% reduced weapon '
                  'damage.',
   'Name': 'Crusader Hydraulics'},
- {'Category': 'Survival',
-  'Cost': 4000,
-  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
-  'Name': 'Iron Eyes',
-  'Shields': 25},
  {'Category': 'Survival',
   'Cost': 5000,
   'Description': '8% Health, Armor, Shields.',
@@ -610,7 +615,7 @@ records = [
   'Name': 'Martian Mender'},
  {'Category': 'Survival',
   'Cost': 10000,
-  'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, you first gain 300 decaying Overhealth.',
+  'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, first gain 300 decaying Overhealth.',
   'Name': 'Overdrive Core',
   'Shields': 25,
   'WP': 10},
@@ -1295,4 +1300,4 @@ print("\n".join([f"{key}: {value}" for key, value in settings.items() if value])
 # - The code checks EVERY combination of items limited to these constraints and calculates its objective score and budget (total cost)
 # - If a new combination has a higher score than an older combination for a specific budget, the new one replaces it. *Ties are stored.
 # - Once all combinations are checked, this list of budgets and scores is reduced down by removing anything that is both more expensive and has a worse score than something cheaper. Ties aren't removed and are denoted by not having a divider (---------------------).
-# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. If there are multiple alternatives, the list is arbitrary.
+# - Just before it's printed, these (*) ties mentioned earlier are checked for their (coal + dps) score, and whatever is higher is presented as the main suggestion. This form of tiebreaking means that if your objective was dps then the tiebreaker is coal, and vice versa. If there are multiple alternatives, the order is arbitrary.
