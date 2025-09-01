@@ -4,7 +4,14 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated July 8 2025
+# Last updated Sept 1 2025
+
+# Updated with S18 items
+# Note, I didn't bother including toggles for Reinforced titanium getting 5% AP during shields / Crusader Hydraulics getting 5% AS during armour
+# Divine Intervention hasn't been updated
+# Bloodbound could use a toggle, but it's always just 1.1x your dps and worth including in a 1v1 vaccuum
+
+# Added remove_moira_items
 
 # Change settings, then find your budget. (e.g., if 10123 cash, look for "Items (6 @ cost 10000)" or cheaper). 
 # Any "Alternatives" are builds that exactly tie this objective score and price, but the "main" build it suggests has a higher right click dps + coal dps
@@ -19,7 +26,7 @@ import matplotlib.pyplot as plt
 # deconstruction: Should dps, combined, coal, and orb use Deconstruction's damage boost?
 # destruction's divide: Should coal use Destruction's divide's damage boost?
 
-# Shields / Armour: Gives Shieldbreaker it's bonus speed. Armour applies *0.7 damage modifier if Codebreaker doesn't end up as a selected item, *0.85 if it does.
+# Shields / Armour: Gives Shieldbuster it's bonus speed. Armour applies *0.7 damage modifier if Codebreaker doesn't end up as a selected item, *0.85 if it does.
 
 # A bunch of items: Should these items have their conditional stats?
 # (Note: Weapon jammer, vanadium, and aerial distresser are NEVER applied to coal, as you can't/can't realistically use them with coal. Superflexor can somewhat be used with coal (3s linger + 5s of AP boost) so I did let it have 25% AP for coal if True.)
@@ -40,7 +47,7 @@ import matplotlib.pyplot as plt
 objective = "dps"
 max_items = 6
 max_cost  = 100000
-ethereal_excision_HS = True
+ethereal_excision_HS = False
 deconstruction = False
 destructions_divide = False
 
@@ -53,8 +60,8 @@ weapon_jammer = True
 # (Extra) Weapon power
 hardlight_accelerator = 0
 
-# Ability power
-superflexor = True
+# Ability power (and 25 armour for charged_plating)
+superflexor = False
 charged_plating = False
 vitality_amplifier = False
 
@@ -67,9 +74,6 @@ amaris_antidote = False
 vanadium_injection = False
 volskaya_ordnance = 0
 
-# Weapon lifesteal
-emergency_chip = False
-
 mandatory_items = []
 excluded_items = []
 
@@ -78,6 +82,8 @@ excluded_items = []
 # mandatory_items = ['Amaris antidote']
 # mandatory_items = ['El-saka Supressor', 'Ogundimu Reduction Field', 'lumerico fusion drive']
 # 'cybervenom','liquid nitrogen','alternative energy','biotech maximizer'
+# 'phantasmic flux', 'vital-e-tee'
+# 'Bio-needles', 'High Capacity Tubing', 'Alternative Energy', 'Subatomic Splitter', 'Levitation Shawl'
 
 remove_awful_items = True
 
@@ -87,7 +93,7 @@ remove_awful_items = True
 
 # You can override things in the remove_awful_items list by making your desired item(s) mandatory.
 
-
+remove_moira_items = False
 
 # ------------------------------ Don't need to change anything below here ------------------------------
 
@@ -104,7 +110,7 @@ settings = {
     "Against armour": against_armour,
     "Advanced nanobiotics": advanced_nanobiotics,
     "Superflexor": superflexor,
-    "Charged Plating (only AP)": charged_plating,
+    "Charged Plating": charged_plating,
     "Weapon jammer": weapon_jammer,
     "Amari's antidote": amaris_antidote,
     "Vanadium injection": vanadium_injection,
@@ -118,7 +124,7 @@ settings = {
 
 
 if remove_awful_items:
-    # New: conditionally exclude “awful” items (sometimes based on their flag)
+    # Conditionally exclude “awful” items (sometimes based on their flag)
     excluded_items += ['Advanced Nanobiotics'] if not advanced_nanobiotics else [] # 5% WP for 4000... no
     excluded_items += ['Superflexor']          if not superflexor          else [] # 10% WP for 10000... no
     excluded_items += ['Weapon jammer']        if not weapon_jammer        else [] # 10% WP for 10000... no
@@ -130,13 +136,27 @@ if remove_awful_items:
     excluded_items += ['Mark of the Kitsune']
     excluded_items += ['Winning Attitude'] # Fifth 25 life item for 1500. Relevant for max life builds < 17500 but makes life calculations VERY slow.
     excluded_items += ['Geneticists Vial'] # 25 health for 9000 is irrelevant
-    excluded_items += ['Emergency Chip']       if not emergency_chip       else [] # 5% WP for 4500... no
     excluded_items += ['Vitality Amplifier']   if not vitality_amplifier   else [] # 25 Shields for 4500... no
     excluded_items += ['Sonic Recharger']
     excluded_items += ['Overdrive Core']
     excluded_items += ['Aerial Distresser']    if not aerial_distresser or objective == "life"    else []
     excluded_items += ['Abyss Boots']
     excluded_items += ['Ironclad Exhaust Ports'] # 5% CDR for 4000... no
+    excluded_items += ['Ballistic Buffer']
+    excluded_items += ['Electrolytes']
+    excluded_items += ['Field Rations']
+    excluded_items += ['Running Shoes']
+    excluded_items += ['Stratosphere Beacon'] if not (objective == "life") else []
+    excluded_items += ['Emergency Chip'] if not (objective == "life") else []
+    excluded_items += ['Wrist Wraps']    if (objective == "life")    else []
+    excluded_items += ['Custom Stock']    if (objective == "life")    else []
+    
+    
+
+    
+if remove_moira_items:
+    # Conditionally exclude Moira items (to run the code for other heroes)
+    excluded_items += ['Bio-needles', 'High Capacity Tubing', 'Alternative Energy', 'Subatomic Splitter', 'Smart Orbs', 'Levitation Shawl', 'Coalegion', 'Extendrils', 'Abyss Boots']
 
 # This should be Moira's base game hp (225).
 initial_hp = 225
@@ -157,11 +177,11 @@ if aerial_distresser and objective == "chain":
 if volskaya_ordnance > 0 and objective == "chain":
     print(f'\nNote, the code right now will apply Volskaya Ordnance boost to ALL chaingrasp targets. It should only apply to the right click target. Set volskaya_ordnance = 0 or fix lol.')
 
+if volskaya_ordnance > 25:
+    print(f'\nYou inputted a Volskaya Ordnance boost over 25%, which is not possible.')
+
 if objective == 'life':
     print(f'\nNote, 1:1 alternatives between green survival items arent shown e.g.: replace [Armored Vest] with [First Aid Kit]')
-
-if charged_plating and objective == 'life':
-    print(f'\nNote, charged_plating = True does not give Charged Plating 25 armour (only 10% AP). If I gave it armour it would make life calculations much slower/lengthy.')
 
 if hardlight_accelerator > 15:
     print(f'\nNote, input a number between 0 and 15 for hardlight_accelerator, as this flag is the bonus weapon power (not including the base 10% WP).')
@@ -229,14 +249,22 @@ records = [
   'Name': 'Shieldbuster',
   'WP': 5},
  {'Category': 'Weapon',
-  'Cost': 4500,
-  'Description': 'While you are below 150 Life, gain 15% Weapon Lifesteal. ',
+  'Cost': 4000,
+  'Description': 'Once per life, when you are below 150 Life, gain 15% Weapon Lifesteal and 50 overhealth for 5s. ',
   'Name': 'Emergency Chip',
   'Shields': 25,
   'WP': 5},
  {'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': 'Weapon Damage to airborne targets above 3m deals 10 bonus damage and slows the enemy by 25% for 3s (10s Cooldown). ',
+  'Health': 25,
+  'Name': 'Stratosphere Beacon',
+  'WP': 5},
+ {'Attack speed': 5,
+  'Category': 'Weapon',
   'Cost': 4500,
-  'Description': '5% Weapon Power, 10% Weapon Lifesteal',
+  'Description': '5% Attack Speed, 10% Weapon Lifesteal',
+  'Health': 25,
   'Name': 'Technoleech',
   'WP': 5,
   'Weapon lifesteal': 10},
@@ -277,7 +305,7 @@ records = [
   'Category': 'Weapon',
   'Cost': 9500,
   'Description': '10% Attack Speed, Deal 5% increased Weapon damage for every '
-                 '100 Max Life they have more than you, up to 20%.',
+                 '100 Max Life they have more than you, up to 25%.',
   'Name': 'Volskaya Ordnance'},
  {'Armour': 25,
   'Category': 'Weapon',
@@ -345,6 +373,7 @@ records = [
   'Name': 'Power Playbook'},
  {'Category': 'Ability',
   'Cost': 1000,
+  'Health': 10,
   'Description': 'After you spend your Ultimate Charge, gain 25 Armor and 10% Ability Power for the rest of the round.',
   'Name': 'Charged Plating'},
  {'Ability lifesteal': 10,
@@ -361,13 +390,14 @@ records = [
   'Category': 'Ability',
   'Cost': 3750,
   'Description': '5% Weapon Power, 10% Ability Power',
+  'Health': 10,
   'Name': 'Custom Stock',
   'WP': 5},
  {'AP': 5,
   'Category': 'Ability',
   'Cost': 4000,
   'Description': '25 Health. 5% Ability Power, When you spend your Ultimate '
-                 'Charge, grant nearby allies 75 Overhealth for 3s.',
+                 'Charge, Cleanse yourself and grant nearby allies 75 Overhealth for 3s.',
   'Health': 25,
   'Name': 'Biolight Overflow'},
  {'AP': 10,
@@ -375,12 +405,19 @@ records = [
   'Category': 'Ability',
   'Cost': 4000,
   'Description': '10% Ability Power, 10% Ability Lifesteal',
+  'Health': 10,
   'Name': 'Energized Bracers'},
+ {'Ability lifesteal': 10,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': 'Ability damage to airborne enemies deal 20% bonus damage over 2s.',
+  'Name': 'Skyline Nanites'},
  {'AP': 5,
   'Attack speed': 10,
   'Category': 'Ability',
   'Cost': 4000,
   'Description': '5% Ability Power, 10% Attack Speed',
+  'Health': 10,
   'Name': 'Wrist Wraps'},
  {'AP': 10,
   'Category': 'Ability',
@@ -388,10 +425,9 @@ records = [
   'Cost': 4500,
   'Description': '10% Ability Power, 5% Cooldown Reduction',
   'Name': 'Multi-Tool'},
- {'Ability lifesteal': 10,
-  'Category': 'Ability',
-  'Cost': 4500,
-  'Description': 'While you are above 80% Life, gain 10% Ability Power.',
+ {'Category': 'Ability',
+  'Cost': 5000,
+  'Description': 'While you are above 50% Life, gain 10% Ability Power. Otherwise, gain 15% Ability Lifesteal and abilities refresh 10% faster',
   'Name': 'Vitality Amplifier',
   'Shields': 25},
  {'AP': 20,
@@ -412,7 +448,7 @@ records = [
   'Name': 'Levitation Shawl'},
  {'AP': 10,
   'Category': 'Ability',
-  'Cost': 9500,
+  'Cost': 9000,
   'Description': 'Passive Life Regeneration can overheal up to 75.',
   'Name': 'Sonic Recharger',
   'Shields': 25},
@@ -500,8 +536,25 @@ records = [
   'Name': 'Extendrils'},
  {'Category': 'Survival',
   'Cost': 1000,
-  'Description': '10 Health. At the start of the round and when you first '
-                 'respawn, gain 20% move speed for 10s while out of combat.',
+  'Description': '10 Health. After taking damage beyond 20m, gain '
+                 '50 Overhealth for 3s (15s Cooldown).',
+  'Health': 10,
+  'Name': 'Ballistic Buffer'},
+ {'Category': 'Survival',
+  'Cost': 1000,
+  'Description': '10 Health. At the start of the round and everytime you respawn, '
+                 'gain 100 unrecoverable Overhealth.',
+  'Health': 10,
+  'Name': 'Electrolytes'},
+ {'Category': 'Survival',
+  'Cost': 1000,
+  'Description': 'While on the Objective, restore 8 Life every 1s.',
+  'Health': 10,
+  'Name': 'Field Rations'},
+ {'Category': 'Survival',
+  'Cost': 1000,
+  'Description': '10 Health. At the start of the round and every time you  '
+                 'respawn while not in Overtime, gain 30% move speed for 10s while out of combat.',
   'Health': 10,
   'Name': 'Running Shoes'},
  {'Category': 'Survival',
@@ -517,7 +570,7 @@ records = [
   'Name': 'Armored Vest'},
  {'Category': 'Survival',
   'Cost': 1500,
-  'Description': '25 Shields. Reduce the time before your life begins '
+  'Description': '25 Shields. Reduce the time before your life (and shields) begins '
                  'regenerating by 33%.',
   'Name': 'First Aid Kit',
   'Shields': 25},
@@ -540,14 +593,15 @@ records = [
   'Shields': 25},
  {'Category': 'Survival',
   'Cost': 3750,
-  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
-                 'Damage.',
-  'Name': 'Reinforced Titanium',
+  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
+  'Move speed': 5,
+  'Name': 'Iron Eyes',
   'Shields': 25},
  {'Category': 'Survival',
-  'Cost': 4000,
-  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
-  'Name': 'Iron Eyes',
+  'Cost': 3750,
+  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
+                 'Damage and gain 5% Ability Power.',
+  'Name': 'Reinforced Titanium',
   'Shields': 25},
  {'Category': 'Survival',
   'Cooldown reduction': 5,
@@ -556,10 +610,17 @@ records = [
                  'Overhealth for 3s.',
   'Name': 'Ironclad Exhaust Ports'},
  {'Category': 'Survival',
-  'Cost': 4000,
-  'Description': '25 Shields. Convert 100 Health into Shields.',
+  'Cost': 3750,
+  'Description': '25 Shields. Convert 150 Health into Shields.',
   'Name': 'Vishkar Condensor',
   'Shields': 25},
+ {'Category': 'Survival',
+  'Cost': 4000,
+  'Description': '25 Health. The last enemy to deal a final blow to you is '
+                 'Revealed when nearby. Deal 10% more damage to them and take '
+                 '10% reduced damage from them.',
+  'Health': 25,
+  'Name': 'Bloodbound'},
  {'Armour': 10,
   'Category': 'Survival',
   'Cost': 4000,
@@ -569,7 +630,7 @@ records = [
   'Category': 'Survival',
   'Cost': 4500,
   'Description': '25 Armor. While you have Armor, take 10% reduced weapon '
-                 'damage.',
+                 'damage and gain 5% Attack Speed',
   'Name': 'Crusader Hydraulics'},
  {'Category': 'Survival',
   'Cost': 5000,
@@ -582,17 +643,16 @@ records = [
   'Name': 'Abyss Boots'},
  {'Category': 'Survival',
   'Cost': 9000,
-  'Description': '50 Health. The last enemy to deal a final blow to you is '
-                 'Revealed when nearby. Deal 10% more damage to them and take '
-                 '10% reduced damage from them.',
-  'Health': 50,
-  'Name': 'Bloodbound'},
- {'Category': 'Survival',
-  'Cost': 9000,
   'Description': '25 Health. The first time you would die each round, revive '
                  'instead with 250 Life after 3s.',
   'Health': 25,
   'Name': 'Geneticists Vial'},
+ {'Category': 'Survival',
+  'Cost': 9500,
+  'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, first gain 300 decaying Overhealth.',
+  'Name': 'Overdrive Core',
+  'Shields': 25,
+  'WP': 10},
  {'Category': 'Survival',
   'Cost': 9500,
   'Description': '50 Shields. When you take more than 100 damage at once, '
@@ -613,12 +673,6 @@ records = [
                  'every 1s.',
   'Health': 25,
   'Name': 'Martian Mender'},
- {'Category': 'Survival',
-  'Cost': 10000,
-  'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, first gain 300 decaying Overhealth.',
-  'Name': 'Overdrive Core',
-  'Shields': 25,
-  'WP': 10},
  {'AP': 10,
   'Ability lifesteal': 15,
   'Category': 'Survival',
@@ -721,15 +775,13 @@ for r in filtered:
         r['Attack speed'] = 10
         r['Cooldown reduction'] = 10
         r['Move speed'] = 10
-    # Emergency Chip
-    if emergency_chip and name == "Emergency Chip":
-        r['Weapon lifesteal'] = 15
     # Vitality Amplifier
     if vitality_amplifier and name == "Vitality Amplifier":
         r['AP'] = 10
     # Charged Plating
     if charged_plating and name == "Charged Plating":
         r['AP'] = 10
+        r['Armour'] = 25
     # Biotech Maximizer
     if (biotech_maximizer > 0) and name == "Biotech Maximizer":
         r['Cooldown reduction'] = min(biotech_maximizer, 35)
@@ -914,7 +966,7 @@ def calc_life(sel_items, base_health, hea, she, arm):
     bonus = 0
     converted = 0
     if "Vishkar Condensor" in sel_items:
-        converted+=100
+        converted+=150
     if "Vital-e-tee" in sel_items:
         converted+=100
 
