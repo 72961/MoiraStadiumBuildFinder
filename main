@@ -296,7 +296,7 @@ records = [
   'Name': 'Aerial Distresser',
   'Shields': 25},
  {'Category': 'Weapon',
-  'Cost': 9000,
+  'Cost': 10000,
   'Description': '15% Weapon Power, Ignore 50% of Armors damage reduction.',
   'Name': 'Codebreaker',
   'WP': 15},
