@@ -1,4 +1,4 @@
-# MoiraStadiumBuildFinder
+# Moira Stadium Build Finder by birdman
 Brute forcer to find the best items to select at every budget range for an objective (e.g., right-click dps). Customizable to include specific items, set conditional item stats, etc.
 
 
