@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated Sept 1 2025
+# Last updated Oct 11 2025
 
 # Updated with S18 items
 # Note, I didn't bother including toggles for Reinforced titanium getting 5% AP during shields / Crusader Hydraulics getting 5% AS during armour
