@@ -491,7 +491,7 @@ records = [
   'Category': 'Ability',
   'Cost': 9500,
   'Description': '10% Ability Power, 10% Attack Speed, After using an ability, '
-                 'for 3s Weapon Damage deals additional damage equal to 1% of the target's Life. (Cooldown: 0.25s) ',
+                 'for 3s Weapon Damage deals additional damage equal to 1% of the targets Life. (Cooldown: 0.25s) ',
   'Name': 'Three-tap Tommygun'},
  {'AP': 20,
   'Category': 'Ability',
