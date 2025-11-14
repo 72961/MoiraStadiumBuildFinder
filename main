@@ -4,9 +4,9 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated Oct 11 2025
+# Last updated Nov 14 2025
 
-# Updated with S18 items
+# Updated with Oct 30 item changes. Doesn't have gadgets yet
 # Note, I didn't bother including toggles for Reinforced titanium getting 5% AP during shields / Crusader Hydraulics getting 5% AS during armour
 # Divine Intervention hasn't been updated
 # Bloodbound could use a toggle, but it's always just 1.1x your dps and worth including in a 1v1 vaccuum
@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 # deconstruction: Should dps, combined, coal, and orb use Deconstruction's damage boost?
 # destruction's divide: Should coal use Destruction's divide's damage boost?
 
-# Shields / Armour: Gives Shieldbuster it's bonus speed. Armour applies *0.7 damage modifier if Codebreaker doesn't end up as a selected item, *0.85 if it does.
+# Shields / Armour: Gives Shieldbuster its bonus speed. Armour applies *0.7 damage modifier if Codebreaker doesn't end up as a selected item, *0.85 if it does.
 
 # A bunch of items: Should these items have their conditional stats?
 # (Note: Weapon jammer, vanadium, and aerial distresser are NEVER applied to coal, as you can't/can't realistically use them with coal. Superflexor can somewhat be used with coal (3s linger + 5s of AP boost) so I did let it have 25% AP for coal if True.)
@@ -34,7 +34,7 @@ import matplotlib.pyplot as plt
 # In the item list, I removed apostrophes from the names (e.g., Amaris antidote) because it would mess up the structure of the mandatory/excluded item list.
 # objective = "life" may be slow. Use mandatory_items = ['Rustung Von Wilhelm'] for budgets over ~20000 to speed it up as this item is part of every >20000 life build.
 
-# objective = "chain" assumes 0 time to throw an orb. The formula is a simplified: (Damage done for 2.54s with chain grasp) + (Normal damage done in the rest of the time minus 2.54s and minus 0.497s to throw the orb) all divided by the orb cooldown
+# objective = "chain" assumes 0 time to between pressing E and throwing an orb. The formula is a simplified: (Damage done for 2.54s with chain grasp) + (Normal damage done in the rest of the time minus 2.54s and minus 0.497s to throw the orb) all divided by the orb cooldown
 # (dps*3*2.54s) + (dps*1*(8*(1-CDR)-2.54s-0.497s)) all divided by 8*(1-CDR)
 # dps*(7.62 + 8*(1-CDR) - 2.54s - 0.497s) + 1)
 # dps*((0.572875)/(1-CDR)) + 1)
@@ -254,11 +254,10 @@ records = [
   'Shields': 25,
   'WP': 5},
  {'Category': 'Weapon',
-  'Cost': 4000,
-  'Description': 'Weapon Damage to airborne targets above 3m deals 10 bonus damage and slows the enemy by 25% for 3s (10s Cooldown). ',
+  'Cost': 1500,
+  'Description': 'Damage to airborne targets above 3m deals 10 bonus damage and slows the enemy by 25% for 3s (15s Cooldown). ',
   'Health': 25,
-  'Name': 'Stratosphere Beacon',
-  'WP': 5},
+  'Name': 'Stratosphere Beacon'},
  {'Attack speed': 5,
   'Category': 'Weapon',
   'Cost': 4500,
@@ -468,7 +467,7 @@ records = [
  {'AP': 15,
   'Armour': 50,
   'Category': 'Ability',
-  'Cost': 10000,
+  'Cost': 11000,
   'Description': '50 Armor, 15% Ability Power, When you use an ability, '
                  'restore 50 armor or shields over 2s.',
   'Name': 'Lumerico Fusion Drive'},
@@ -490,10 +489,9 @@ records = [
   {'AP': 10,
   'Attack speed': 10,
   'Category': 'Ability',
-  'Cost': 10500,
+  'Cost': 9500,
   'Description': '10% Ability Power, 10% Attack Speed, After using an ability, '
-                 'your next 3 instances of Weapon Damage deal additional '
-                 'damage equal to 3% of the targets Life.',
+                 'for 3s Weapon Damage deals additional damage equal to 1% of the target's Life. (Cooldown: 0.25s) ',
   'Name': 'Three-tap Tommygun'},
  {'AP': 20,
   'Category': 'Ability',
@@ -506,7 +504,7 @@ records = [
   'Category': 'Ability',
   'Cost': 11000,
   'Description': '25 Health, 10% Ability Power, Dealing ability damage slows '
-                 'the targets move speed by 20% for 3s.',
+                 'the targets move speed by 10% and bonus move speed by 15% for 3s.',
   'Health': 25,
   'Name': 'Liquid Nitrogen'},
  {'AP': 10,
@@ -575,9 +573,8 @@ records = [
   'Shields': 25},
  {'Category': 'Survival',
   'Cost': 1500,
-  'Description': '5% Move speed. Enemies below 30% life are revealed to you.',
-  'Move speed': 5,
-  'Name': 'Heartbeat sensor'},
+  'Description': 'When you are stunned, slept, or hindered, or anti-healed, gain 75 Overhealth for 3s. (20s Cooldown)',
+  'Name': 'Reflex Coating'},
  {'Category': 'Survival',
   'Cost': 1500,
   'Description': '25 Health. Quick melee damage heals for 25 Health.',
@@ -607,6 +604,7 @@ records = [
   'Cost': 4000,
   'Description': '5% Cooldown Reduction. When you use an ability, gain 25 '
                  'Overhealth for 3s.',
+  'Health': 10,
   'Name': 'Ironclad Exhaust Ports'},
  {'Category': 'Survival',
   'Cost': 3750,
