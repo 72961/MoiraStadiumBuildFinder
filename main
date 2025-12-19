@@ -4,7 +4,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated Nov 14 2025
+# Last updated Dec 19 2025
 
 # Updated with Oct 30 item changes. Doesn't have gadgets yet
 # Note, I didn't bother including toggles for Reinforced titanium getting 5% AP during shields / Crusader Hydraulics getting 5% AS during armour
@@ -428,10 +428,10 @@ records = [
   'Description': 'While you are above 50% Life, gain 10% Ability Power. Otherwise, gain 15% Ability Lifesteal and abilities refresh 10% faster',
   'Name': 'Vitality Amplifier',
   'Shields': 25},
- {'AP': 20,
+ {'AP': 15,
   'Category': 'Ability',
-  'Cost': 6000,
-  'Description': '20% Ability Power',
+  'Cost': 5500,
+  'Description': '15% Ability Power',
   'Name': 'Nano Cola'},
  {'AP': 5,
   'Category': 'Ability',
@@ -496,7 +496,7 @@ records = [
  {'AP': 20,
   'Category': 'Ability',
   'Cooldown reduction': 10,
-  'Cost': 11000,
+  'Cost': 12000,
   'Description': '20% Ability Power, 10% Cooldown Reduction, After Spending '
                  'your Ultimate Charge, gain 100 Overhealth for 3s.',
   'Name': 'Iridescent Iris'},
@@ -516,7 +516,7 @@ records = [
   'Name': 'Mark of the Kitsune'},
  {'AP': 35,
   'Category': 'Ability',
-  'Cost': 14000,
+  'Cost': 14500,
   'Description': '35% Ability Power',
   'Name': 'Champions Kit'},
  {'AP': 15,
@@ -573,7 +573,8 @@ records = [
   'Shields': 25},
  {'Category': 'Survival',
   'Cost': 1500,
-  'Description': 'When you are stunned, slept, or hindered, or anti-healed, gain 75 Overhealth for 3s. (20s Cooldown)',
+  'Description': 'When you are stunned, slept, or hindered, or anti-healed, gain 75 Overhealth for 3s.',
+  'Health': 10,
   'Name': 'Reflex Coating'},
  {'Category': 'Survival',
   'Cost': 1500,
@@ -664,9 +665,9 @@ records = [
                  'Speed and restores 5% of Max Life over 2s.',
   'Name': 'Gloomgauntlet'},
  {'Category': 'Survival',
-  'Cooldown reduction': 10,
+  'Cooldown reduction': 5,
   'Cost': 10000,
-  'Description': '25 Health. 10% Cooldown Reduction. Restore 3% of your Life '
+  'Description': '25 Health. 5% Cooldown Reduction. Restore 3% of your Life '
                  'every 1s.',
   'Health': 25,
   'Name': 'Martian Mender'},
