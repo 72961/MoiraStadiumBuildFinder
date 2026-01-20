@@ -264,7 +264,6 @@ records = [
   'Description': '5% Attack Speed, 10% Weapon Lifesteal',
   'Health': 25,
   'Name': 'Technoleech',
-  'WP': 5,
   'Weapon lifesteal': 10},
  {'Category': 'Weapon',
   'Cooldown reduction': 5,
