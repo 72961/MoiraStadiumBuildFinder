@@ -4,7 +4,12 @@ import time
 import matplotlib.pyplot as plt
 
 
-# Last updated Dec 19 2025
+# Still need to add Zen Rare Survival items, Gadgets maybe..
+# Fix life calc
+
+
+
+# Last updated March 21 2026
 
 # Updated with Oct 30 item changes. Doesn't have gadgets yet
 # Note, I didn't bother including toggles for Reinforced titanium getting 5% AP during shields / Crusader Hydraulics getting 5% AS during armour
@@ -93,7 +98,8 @@ remove_awful_items = True
 
 # You can override things in the remove_awful_items list by making your desired item(s) mandatory.
 
-remove_moira_items = False
+remove_moira_items = True
+remove_zen_items = False
 
 # ------------------------------ Don't need to change anything below here ------------------------------
 
@@ -158,7 +164,14 @@ if remove_moira_items:
     excluded_items += ['Bio-needles', 'High Capacity Tubing', 'Alternative Energy', 'Subatomic Splitter', 'Smart Orbs', 'Levitation Shawl', 'Coalegion', 'Extendrils', 'Abyss Boots']
 
 # This should be Moira's base game hp (225).
-initial_hp = 225
+initial_hp = 250
+
+
+if remove_zen_items:
+    # Conditionally exclude Zen items:
+    excluded_items += ['Haste Subroutine', 'Genjis Galvanic Gloves', 'Orb Of Perception', 'Breezeborne Blessing', 'Satyas Solution', 'Friendship Bracelet', 'Mondattas Mantra', 'Mind Shaper', 'Meditation Mat', 'Golden Monk', 'Teachers Totem']
+
+
 
 
 
@@ -260,6 +273,12 @@ records = [
   'Name': 'Stratosphere Beacon'},
  {'Attack speed': 5,
   'Category': 'Weapon',
+  'Cost': 4000,
+  'Description': '5% Attack Speed, 10 Health, 25% Max Ammo',
+  'Health': 10,
+  'Name': 'Stockpile'},
+ {'Attack speed': 5,
+  'Category': 'Weapon',
   'Cost': 4500,
   'Description': '5% Attack Speed, 10% Weapon Lifesteal',
   'Health': 25,
@@ -328,7 +347,7 @@ records = [
  {'Category': 'Weapon',
   'Cost': 11000,
   'Description': '10% Weapon Power, Critical Hits apply 30% Healing Reduction '
-                 'to the target for 2s.',
+                 'to the target for 3s.',
   'Name': 'El-saka Supressor',
   'WP': 10},
  {'Category': 'Weapon',
@@ -363,6 +382,23 @@ records = [
   'Description': '15% Biotic Grasp Secondary Fire Range.',
   'Name': 'Subatomic Splitter',
   'WP': 10},
+ {'Attack speed': 15,
+  'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': 'After using Harmony Orb or Discord Orb, gain 100% Projectile Speed for 3s',
+  'Name': 'Haste Subroutine'},
+ {'Attack speed': 10,
+  'Category': 'Weapon',
+  'Cost': 12000,
+  'Description': 'Orb of Destructions Secondary Fire charges 20% faster.',
+  'Name': 'Genjis Galvanic Gloves',
+  'WP': 10},
+ {'AP': 15,
+  'Category': 'Weapon',
+  'Cost': 11000,
+  'Description': 'Targets affected by Discord Orb are Revealed. Gain 15% Ability Power for each enemy discorded.',
+  'Name': 'Orb Of Perception',
+  'WP': 15},
  {'AP': 10,
   'Category': 'Ability',
   'Cost': 1000,
@@ -432,6 +468,17 @@ records = [
   'Cost': 5500,
   'Description': '15% Ability Power',
   'Name': 'Nano Cola'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': 'Harmony Orb heals airborne allies for 15% more',
+  'Name': 'Breezeborne Blessing'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 4000,
+  'Description': '15% Ability Power',
+  'Move speed': 10,
+  'Name': 'Satyas Solution'},
  {'AP': 5,
   'Category': 'Ability',
   'Cost': 4000,
@@ -447,8 +494,8 @@ records = [
   'Category': 'Ability',
   'Cost': 9000,
   'Description': 'Passive Life Regeneration can overheal up to 75.',
-  'Name': 'Sonic Recharger',
-  'Shields': 25},
+  'Health': 25,
+  'Name': 'Sonic Recharger'},
  {'AP': 10,
   'Category': 'Ability',
   'Cost': 10000,
@@ -467,8 +514,8 @@ records = [
   'Armour': 50,
   'Category': 'Ability',
   'Cost': 11000,
-  'Description': '50 Armor, 15% Ability Power, When you use an ability, '
-                 'restore 50 armor or shields over 2s.',
+  'Description': '50 Armor, 15% Ability Power, When you use an ability or Gadget, '
+                 'restore 50 armor or shields over 3s.',
   'Name': 'Lumerico Fusion Drive'},
  {'Category': 'Ability',
   'Cost': 10000,
@@ -483,7 +530,7 @@ records = [
   'Cooldown reduction': 5,
   'Cost': 10500,
   'Description': '10% Ability Power, 5% Cooldown Reduction, Dealing ability '
-                 'damage applies 30% healing reduction for 2s.',
+                 'damage applies 30% healing reduction for 3s.',
   'Name': 'Cybervenom'},
   {'AP': 10,
   'Attack speed': 10,
@@ -503,7 +550,7 @@ records = [
   'Category': 'Ability',
   'Cost': 11000,
   'Description': '25 Health, 10% Ability Power, Dealing ability damage slows '
-                 'the targets move speed by 10% and bonus move speed by 15% for 3s.',
+                 'the targets move speed by 10% and their bonus move speed by 15% for 3s.',
   'Health': 25,
   'Name': 'Liquid Nitrogen'},
  {'AP': 10,
@@ -530,16 +577,30 @@ records = [
   'Cost': 11000,
   'Description': '15% Ability Power. 30% Biotic Orb Tendril Range.',
   'Name': 'Extendrils'},
+ {'AP': 10,
+  'Category': 'Ability',
+  'Cost': 11000,
+  'Description': 'Increase your healing by up to 20%, based on how close you are to your target',
+  'Name': 'Friendship Bracelet'},
+ {'Category': 'Ability',
+  'Cost': 11000,
+  'Description': '30% Transcendence Duration. After Transcendence ends, gain Overhealth equal to 100% of the healing it did.',
+  'Name': 'Mondattas Mantra'},
+ {'AP': 15,
+  'Category': 'Ability',
+  'Cost': 12000,
+  'Description': '15% Starting Ultimate Charge. Allies affected by Transcendence have their cooldowns refresh 15% faster.',
+  'Name': 'Mind Shaper'},
  {'Category': 'Survival',
-  'Cost': 1000,
-  'Description': '10 Health. After taking damage beyond 20m, gain '
-                 '50 Overhealth for 3s (15s Cooldown).',
-  'Health': 10,
-  'Name': 'Ballistic Buffer'},
+  'Cost': 3750,
+  'Description': '25 Shields. After taking damage from an Airborne target above 5m, '
+                 'gain 75 Overhealth for 3s (8s Cooldown).',
+  'Name': 'Ballistic Buffer',
+  'Shields': 25},
  {'Category': 'Survival',
   'Cost': 1000,
   'Description': '10 Health. At the start of the round and everytime you respawn, '
-                 'gain 100 unrecoverable Overhealth.',
+                 'gain 30% Move speed for 10s while out of combat and 100 Overhealth.',
   'Health': 10,
   'Name': 'Electrolytes'},
  {'Category': 'Survival',
@@ -547,12 +608,6 @@ records = [
   'Description': 'While on the Objective, restore 8 Life every 1s.',
   'Health': 10,
   'Name': 'Field Rations'},
- {'Category': 'Survival',
-  'Cost': 1000,
-  'Description': '10 Health. At the start of the round and every time you  '
-                 'respawn while not in Overtime, gain 30% move speed for 10s while out of combat.',
-  'Health': 10,
-  'Name': 'Running Shoes'},
  {'Category': 'Survival',
   'Cost': 1500,
   'Description': '25 Health. Health Packs grant 20% Move Speed for 5s and 50 '
@@ -572,12 +627,12 @@ records = [
   'Shields': 25},
  {'Category': 'Survival',
   'Cost': 1500,
-  'Description': 'When you are stunned, slept, or hindered, or anti-healed, gain 75 Overhealth for 3s.',
+  'Description': 'When you are affected by stun, sleep, hinder, or anti-heal, gain 50 Overhealth for 2s.',
   'Health': 10,
   'Name': 'Reflex Coating'},
  {'Category': 'Survival',
   'Cost': 1500,
-  'Description': '25 Health. Quick melee damage heals for 25 Health.',
+  'Description': '25 Health. Quick melee damage heals for 25 Life.',
   'Health': 25,
   'Name': 'Siphon Gloves'},
  {'Category': 'Survival',
@@ -587,18 +642,17 @@ records = [
                  'Life over 3s.',
   'Name': 'Cushioned Padding',
   'Shields': 25},
- {'Category': 'Survival',
+ {'Armour': 25,
+  'Category': 'Survival',
   'Cost': 3750,
-  'Description': '25 Shields. You take 20% reduced damage from Critical Hits.',
-  'Move speed': 5,
-  'Name': 'Iron Eyes',
-  'Shields': 25},
+  'Description': '25 Armor. 20% Critical Damage Reduction.',
+  'Name': 'Iron Eyes'},
  {'Category': 'Survival',
-  'Cost': 3750,
-  'Description': '25 Shields. While you have Shields, take 15% reduced Ability '
-                 'Damage and gain 5% Ability Power.',
+  'Cost': 9500,
+  'Description': '50 Shields. 10% Ability Damage Reduction. While you have Shields, gain 5% Ability '
+                 'Damage Reduction. Reduce the time before your Shields begins regenerating by 33%.',
   'Name': 'Reinforced Titanium',
-  'Shields': 25},
+  'Shields': 50},
  {'Category': 'Survival',
   'Cooldown reduction': 5,
   'Cost': 4000,
@@ -611,27 +665,28 @@ records = [
   'Description': '25 Shields. Convert 150 Health into Shields.',
   'Name': 'Vishkar Condensor',
   'Shields': 25},
- {'Category': 'Survival',
+ {'Armour': 25,
+  'Category': 'Survival',
   'Cost': 4000,
-  'Description': '25 Health. The last enemy to deal a final blow to you is '
-                 'Revealed when nearby. Deal 10% more damage to them and take '
-                 '10% reduced damage from them.',
-  'Health': 25,
+  'Description': '25 Armour. The last enemy to deal a final blow to you is '
+                 'Revealed when nearby. Deal 15% more damage to them and take '
+                 '15% reduced damage from them.',
   'Name': 'Bloodbound'},
  {'Armour': 10,
   'Category': 'Survival',
   'Cost': 4000,
   'Description': '10 Armor. Convert 100 Health into Armor.',
   'Name': 'Vital-e-tee'},
- {'Armour': 25,
+ {'Armour': 50,
   'Category': 'Survival',
-  'Cost': 4500,
-  'Description': '25 Armor. While you have Armor, take 10% reduced weapon '
-                 'damage and gain 5% Attack Speed',
+  'Cost': 10500,
+  'Description': '50 Armor. 10% Weapon Damage Reduction. When an enemy deals Weapon Damage to your Armor, reduce their '
+                 'Attack Speed by 10% for 3s.',
   'Name': 'Crusader Hydraulics'},
  {'Category': 'Survival',
   'Cost': 5000,
-  'Description': '8% Health, Armor, Shields.',
+  'Description': '25 Health. 8% Health, Armor, Shields.',
+  'Health': 25,
   'Name': 'Meka Z-Series'},
  {'Category': 'Survival',
   'Cost': 4000,
@@ -639,22 +694,15 @@ records = [
   'Health': 25,
   'Name': 'Abyss Boots'},
  {'Category': 'Survival',
-  'Cost': 9000,
-  'Description': '25 Health. The first time you would die each round, revive '
-                 'instead with 250 Life after 3s.',
-  'Health': 25,
-  'Name': 'Geneticists Vial'},
- {'Category': 'Survival',
   'Cost': 9500,
   'Description': 'Once per life, if you take damage that would reduce you below 30% Max Life, first gain 300 decaying Overhealth.',
   'Name': 'Overdrive Core',
   'Shields': 25,
   'WP': 10},
  {'Category': 'Survival',
-  'Cost': 9500,
-  'Description': '50 Shields. When you take more than 100 damage at once, '
-                 'restore 20% of damage taken and start regenerating your '
-                 'Shields.',
+  'Cost': 9000,
+  'Description': '50 Shields. When you are stunned or take more than 125 pre-mitigation damage at once, gain Overhealth'
+                 'equal to 25% of damage taken for 3s and start regenerating your Shields.',
   'Name': 'Divine Intervention',
   'Shields': 50},
  {'Armour': 50,
@@ -676,14 +724,15 @@ records = [
   'Cost': 10000,
   'Description': '10% Weapon Power. 10% Ability Power. 15% Weapon Lifesteal. '
                  '15% Ability Lifesteal. While at full Life, Lifesteal grants '
-                 'up to 100 Overhealth.',
+                 'up to 50 Overhealth.',
   'Name': 'Phantasmic Flux',
   'WP': 10,
   'Weapon lifesteal': 15},
  {'Category': 'Survival',
   'Cost': 10000,
-  'Description': '15% Health, Armor, Shields. While below 30% Life, gain 10% '
+  'Description': '50 Health. 10% Health, Armor, Shields. While below 30% Life, gain 10% '
                  'Damage Reduction.',
+  'Health': 50,
   'Name': 'Rustung Von Wilhelm'},
  {'Category': 'Survival',
   'Cost': 10000,
@@ -694,17 +743,33 @@ records = [
   'Shields': 50},
  {'Category': 'Survival',
   'Cost': 11000,
-  'Description': '50 Health. 10% Weapon Power. Prevent 15% of incoming damage '
+  'Description': '50 Health. 5% Weapon Power. Prevent 15% of incoming damage '
                  'and instead take that prevented damage over 3s.',
   'Health': 50,
   'Name': 'Nebula Conduit',
-  'WP': 10},
+  'WP': 5},
  {'Armour': 50,
   'Category': 'Survival',
   'Cost': 11000,
   'Description': '50 Armor. When you take damage, gain 0.5% Damage Reduction '
                  'for 1s, stacking up to 20 times.',
-  'Name': 'Ogundimu Reduction Field'}
+  'Name': 'Ogundimu Reduction Field'},
+ {'Armour': 50,
+  'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '50 Armor. When your Shields are depleted, knock back nearby enemies, dealing 80 ability damage.'
+                 'Can only trigger every 6s after Shields are fully restored.',
+  'Name': 'Meditation Mat'},
+ {'Armour': 50,
+  'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '50 Armor. For every 50 Armor you have, gain 5% Quick Melee Damage.',
+  'Name': 'Golden Monk'},
+ {'Category': 'Survival',
+  'Cost': 10000,
+  'Description': '50 Shields. Allies affected by Harmony Orb take 10% reduced Ability Damage.',
+  'Name': 'Teachers Totem',
+  'Shields': 50}
 ]
 
 ##### I don't use all of these but why not
@@ -961,19 +1026,14 @@ def calc_life(sel_items, base_health, hea, she, arm):
     total = health + armour_val + shields_val
 
     bonus = 0
-    converted = 0
-    if "Vishkar Condensor" in sel_items:
-        converted+=150
-    if "Vital-e-tee" in sel_items:
-        converted+=100
 
     if "Rustung Von Wilhelm" in sel_items:
-        bonus+=0.15
+        bonus+=0.10
     if "Meka Z-Series" in sel_items:
         bonus+=0.08
 
     if bonus>0:
-        total += (total+converted)*bonus
+        total += total*bonus
 
     return total
 
