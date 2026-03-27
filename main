@@ -1021,8 +1021,8 @@ def calc_combined(atk, wp, lifesteal, sel_items):
 
 def calc_life(sel_items, base_health, hea, she, arm):
     health = base_health + hea
-    armour_val = she
-    shields_val = arm
+    armour_val = arm
+    shields_val = she
     total = health + armour_val + shields_val
 
     bonus = 0
@@ -1298,7 +1298,7 @@ for entry in sorted(results, key=lambda x: x['cost'], reverse=True):
     # Alternative #2: replace ['Armored Vest'] with ['Adrenaline Shot']
     # etc...
     
-    unwanted = set(["Armored Vest", "Running Shoes", "Adrenaline Shot", "First Aid Kit", "Siphon Gloves", "Power Playbook", "Charged Plating"])
+    unwanted = set(["Stratosphere Beacon", "Armored Vest", "Running Shoes", "Adrenaline Shot", "First Aid Kit", "Siphon Gloves", "Power Playbook", "Charged Plating"])
     filtered = []
     base_set = set(items)
     for alt in alts:
